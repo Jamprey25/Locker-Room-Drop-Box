@@ -22,7 +22,7 @@ Videos never embed watch progress from YouTube APIs; teammates must explicitly t
 
 ## Logic flows
 
-1. **Signup** (`registerAndSignIn`) lowercases emails, bcrypt-hashes passwords (cost 12), creates `users`, invokes `signIn("credentials")`, then redirects to `/hub`.
+1. **Signup** (`/signup`) — `registerAndSignIn` lowers email case, bcrypt-hashes passwords (cost 12), creates `users`, invokes `signIn("credentials")`, then redirects `/hub`. Unauthenticated `/hub` visitors land on `/login`, which surfaces the same signup links in chrome + footer (`src/app/login/page.tsx`).
 2. **YouTube ingest** (`ingestYoutubeVideo`) extracts ID (`src/lib/youtube.ts`), rejects invalid strings, resolves duplicates early, grabs oEmbed (fallback title + CDN thumbnail), persists `videos.added_by_id`.
 3. **Resource ingest** validates URL (`z.string().url()`), optional title/note trimming, persists `resources`.
 4. **Watch roster** renders `videos.watches` sorted ascending by timestamp; duplicates impossible per uniqueness constraint — React keys use watcher `user.id`.

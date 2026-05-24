@@ -1,8 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState, useTransition } from "react";
 import { signIn } from "next-auth/react";
+import { AuthPageHeader } from "@/components/auth/auth-page-header";
 
 function LoginInner() {
   const router = useRouter();
@@ -41,7 +43,7 @@ function LoginInner() {
       <div>
         <h1 className="text-xl font-semibold text-white">Log in</h1>
         <p className="text-sm text-zinc-400">
-          Use the email and password from signup.
+          Returning? Use the email and password you chose at signup.
         </p>
       </div>
       <label className="flex flex-col gap-1 text-sm">
@@ -73,13 +75,23 @@ function LoginInner() {
       >
         {pending ? "Signing in..." : "Sign in"}
       </button>
+      <p className="border-t border-zinc-800 pt-4 text-center text-sm text-zinc-400">
+        New to the locker?{" "}
+        <Link
+          href="/signup"
+          className="font-semibold text-amber-400 hover:underline"
+        >
+          Sign up — create an account
+        </Link>
+      </p>
     </form>
   );
 }
 
 export default function LoginPage() {
   return (
-    <div className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-4">
+    <div className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-4 py-12">
+      <AuthPageHeader subtitle="login" />
       <Suspense fallback={<p className="text-sm text-zinc-400">Loading…</p>}>
         <LoginInner />
       </Suspense>

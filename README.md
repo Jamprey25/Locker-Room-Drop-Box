@@ -46,7 +46,7 @@ npm run db:migrate
 npm run dev
 ```
 
-Landing page: [/](http://localhost:3000) · Locker: [/hub](http://localhost:3000/hub).
+Landing page: [/](http://localhost:3000) · **Sign up:** [/signup](http://localhost:3000/signup) (same as [/register](http://localhost:3000/register)) · **Log in:** [/login](http://localhost:3000/login) · Hub (after login): [/hub](http://localhost:3000/hub).
 
 ## Scripts
 

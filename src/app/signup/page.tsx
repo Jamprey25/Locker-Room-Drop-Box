@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { registerAndSignIn } from "@/app/actions/hub";
+import { AuthPageHeader } from "@/components/auth/auth-page-header";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -11,7 +12,8 @@ export default function SignupPage() {
   const [pending, startTransition] = useTransition();
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-6 px-4">
+    <div className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-6 px-4 py-12">
+      <AuthPageHeader subtitle="signup" />
       <form
         className="flex flex-col gap-4 rounded-2xl border border-zinc-800 bg-zinc-900/50 p-6"
         action={(fd) =>
@@ -28,9 +30,10 @@ export default function SignupPage() {
         }
       >
         <div>
-          <h1 className="text-xl font-semibold text-white">Create account</h1>
+          <h1 className="text-xl font-semibold text-white">Sign up</h1>
           <p className="text-sm text-zinc-400">
-            Every teammate registers once — then everybody shares the vault.
+            Create your account once. After that everyone shares the same
+            Videos and Resources lockers.
           </p>
         </div>
         <label className="flex flex-col gap-1 text-sm">
@@ -39,6 +42,7 @@ export default function SignupPage() {
             name="name"
             required
             maxLength={80}
+            autoComplete="name"
             className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-zinc-50 outline-none focus:border-amber-500"
           />
         </label>
@@ -70,15 +74,15 @@ export default function SignupPage() {
           disabled={pending}
           className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-black disabled:opacity-60"
         >
-          {pending ? "Creating..." : "Create account"}
+          {pending ? "Creating account..." : "Create account"}
         </button>
+        <p className="border-t border-zinc-800 pt-4 text-center text-sm text-zinc-400">
+          Already registered?{" "}
+          <Link href="/login" className="font-semibold text-amber-400 hover:underline">
+            Log in
+          </Link>
+        </p>
       </form>
-      <p className="text-center text-sm text-zinc-500">
-        Already have one?{" "}
-        <Link href="/login" className="text-amber-400 hover:underline">
-          Log in
-        </Link>
-      </p>
     </div>
   );
 }

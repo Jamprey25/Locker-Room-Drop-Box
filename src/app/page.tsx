@@ -17,18 +17,29 @@ export default function LandingPage() {
       </div>
       <div className="flex flex-wrap gap-3">
         <Link
-          href="/login"
+          href="/signup"
           className="rounded-xl bg-white px-5 py-3 text-sm font-semibold text-zinc-950 hover:bg-zinc-200"
+        >
+          Sign up
+        </Link>
+        <Link
+          href="/login"
+          className="rounded-xl border border-zinc-700 px-5 py-3 text-sm font-semibold text-zinc-50 hover:border-zinc-400"
         >
           Log in
         </Link>
-        <Link
-          href="/signup"
-          className="rounded-xl border border-zinc-700 px-5 py-3 text-sm font-semibold text-zinc-50 hover:border-zinc-400"
-        >
-          Create account
-        </Link>
       </div>
+      <p className="text-sm text-zinc-500">
+        New accounts:{" "}
+        <Link href="/signup" className="text-amber-400 underline-offset-4 hover:underline">
+          /signup
+        </Link>{" "}
+        (aliases{" "}
+        <Link href="/register" className="text-zinc-400 hover:underline">
+          /register
+        </Link>
+        ).
+      </p>
       <ul className="grid gap-2 text-sm text-zinc-500">
         <li>• Canonical YouTube ingest + thumbnails (oEmbed).</li>
         <li>• Separate tabs for Videos and Resources.</li>
