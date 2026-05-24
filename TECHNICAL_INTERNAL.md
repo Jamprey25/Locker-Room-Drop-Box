@@ -6,7 +6,9 @@ _Last updated: 2026-05-24_
 
 Traffic flows Next.js middleware → guarded `/hub/**` routes → React server components hydrate Prisma payloads → Tailwind-rendered lockers. Credentials hit NextAuth’s authorize hook, bcrypt compares `password_hash`, JWT stores `sub = user.id`, middleware blocks anonymous `/hub`.
 
-Persistence is **SQLite** by default (`DATABASE_URL=file:dev.db` resolves to **`prisma/dev.db`**, via tracked [`prisma/.env`](prisma/.env) + runtime [`src/lib/bootstrap-database-url.ts`](src/lib/bootstrap-database-url.ts) imported before `@/lib/prisma` constructs `PrismaClient`). This avoids Prisma boot errors like “Environment variable not found: DATABASE_URL.” Production deployers normally swap to Postgres (see README).
+Persistence is **SQLite** by default (`DATABASE_URL=file:dev.db` resolves to **`prisma/dev.db`**, via tracked [`prisma/.env`](prisma/.env) + runtime [`src/lib/bootstrap-database-url.ts`](src/lib/bootstrap-database-url.ts) imported before `@/lib/prisma` constructs `PrismaClient`). This avoids Prisma boot errors like “Environment variable not found: DATABASE_URL.”
+
+**Hosting path:** classwork tends to migrate to **Supabase Postgres + Vercel** next; switch `provider`/`DATABASE_URL`, run `npm run db:push` against the pooled Supabase URI, and deploy with `AUTH_SECRET` set (README **Deploy roadmap: SQLite → Supabase + Vercel**).
 
 YouTube ingestion keeps the invariant from Learning Tracker: every saved clip maps to canonical `https://www.youtube.com/watch?v=<videoId>` with `videos.url` enforcing uniqueness (`docs/learning-tracker-technical-reference.md` §3 / §4.1 mirrors this rationale at a trimmed scope).
 
@@ -49,8 +51,8 @@ Canonicalizing hostile URLs into deterministic keys mirrors **compiler IR normal
 - Re-pasting duplicates returns `{ duplicate: true }`; UI explains the vault already tracked the lesson.
 - The Hub fingerprints server watch lists (`src/components/hub/hub-client.tsx`) so optimistic toggles reconcile with refreshed RSC payloads.
 - `authorize` catches Prisma failures and returns `null` (generic “invalid credentials” UX avoids leaking infra).
-- SQLite on ephemeral serverless disks is unsafe for multi-instance writes — upgrade to Postgres + pooling for production fleets.
-- `trustHost` remains enabled for proxies (Vercel). Harden hosts per Auth.js docs for bespoke infra.
+- SQLite on ephemeral serverless disks is unsafe for multi-instance writes — Supabase Postgres + pooled `DATABASE_URL` is the pragmatic next step (`README`).
+- `trustHost` remains enabled for proxies (Vercel). Align `NEXTAUTH_URL` with your canonical domain once deployed.
 
 ## Documentation maintenance checklist
 

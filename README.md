@@ -9,7 +9,7 @@ Resources, and mark videos as watched so everyone can see who has caught up.
 
 - Next.js 15 (App Router) + React 19 + TypeScript
 - NextAuth credentials (JWT sessions, bcrypt hashed passwords)
-- Prisma ORM + **SQLite by default** (local `prisma/dev.db`, zero Postgres setup)
+- Prisma ORM — **SQLite on your laptop** (`prisma/dev.db`) · **PostgreSQL on Supabase** once you ship (recommended with Vercel)
 - Tailwind CSS 4 + YouTube oEmbed metadata ingest
 
 ## Quick start
@@ -34,8 +34,8 @@ Copy [.env.example](.env.example) to `.env` or `.env.local` when you want explic
 
 | Variable       | Purpose |
 |----------------|---------|
-| `DATABASE_URL` | Default `file:dev.db` → **`prisma/dev.db`**. For Postgres later use `postgresql://...`. |
-| `AUTH_SECRET`  | JWT signing secret (`openssl rand -base64 32`) |
+| `DATABASE_URL` | Local default `file:dev.db` → **`prisma/dev.db`**. Prod: Supabase Postgres URI (often the **transaction pooler**, port **6543** — see Supabase docs). |
+| `AUTH_SECRET`  | JWT signing secret (`openssl rand -base64 32`) · **required on Vercel prod** |
 | `NEXTAUTH_SECRET` | Optional alias for `AUTH_SECRET` (NextAuth v4 naming). |
 
 Dev auth fallback: Auth.js uses a deterministic dev JWT secret whenever `NODE_ENV !== "production"` and `AUTH_SECRET` is absent.
@@ -59,13 +59,33 @@ npm run db:migrate  # prisma migrate dev (advanced / custom DB)
 npm run db:studio # Prisma Studio
 ```
 
-### Moving to Postgres (Neon / Supabase) later
+### Deploy roadmap: SQLite → Supabase + Vercel
 
-1. Provision a Postgres URL and put it in `DATABASE_URL`.
-2. In [`prisma/schema.prisma`](prisma/schema.prisma) change `provider` from `"sqlite"` to `"postgresql"`.
-3. Run `npm run db:push` (or `npm run db:migrate` once you regenerate migrations).
+This repo is deliberately **SQLite-first** so your group hacks locally with no cloud DB. When you are ready:
 
-Serverless hosts (for example Vercel) normally expect Postgres rather than SQLite.
+1. **Supabase:** create a project → **Settings → Database**. Copy the **connection string**. For Node/Vercel + Prisma, Supabase recommends the **transaction pooler** URI (often port **6543**) with `sslmode=require` so serverless bursts do not exhaust direct connections ([Supabase: connecting](https://supabase.com/docs/guides/database/connecting-to-postgres)).
+
+2. **Prisma:** in [`prisma/schema.prisma`](prisma/schema.prisma) switch:
+   ```prisma
+   datasource db {
+     provider = "postgresql"
+     url      = env("DATABASE_URL")
+   }
+   ```
+   Optionally add **`DIRECT_URL`** (Supabase **direct/session** Postgres host on port **5432**) for **`prisma migrate`** from your laptop only—keep **`DATABASE_URL`** as the pooled string for runtime. *(If you skip migrations and only ever use `db:push`, a single pooled `DATABASE_URL` is often enough to start.)*
+
+3. **Push schema once (from your machine, pointed at Supabase):**
+   ```bash
+   export DATABASE_URL="postgresql://..."   # pooled Supabase URI
+   npx prisma generate
+   npm run db:push
+   ```
+
+4. **Vercel:** import the repo → **Settings → Environment variables** · set **`DATABASE_URL`** (+ **`DIRECT_URL`** if you use split URLs) · set **`AUTH_SECRET`** (production). Redeploy. `npm run build` already runs `prisma generate` via `postinstall`.
+
+5. **Auth.js hosts:** [`src/auth.ts`](src/auth.ts) uses `trustHost: true`; set your production **`NEXTAUTH_URL`** / site URL per Vercel domain if redirects ever mis-route (Auth.js docs for your beta version).
+
+SQLite files do **not** migrate automatically—tables are recreated on Supabase with `db:push`; if you seeded real data locally, export/import separately.
 
 ## Repo & inspiration
 
@@ -77,8 +97,9 @@ Learning Tracker vault patterns (canonical URLs, duplicate guard): [`docs/learni
 
 - **`MissingSecret`:** Define `AUTH_SECRET` (or `NEXTAUTH_SECRET`) in `.env.local`, restart dev server.
 - **Signup / hub errors referencing `DATABASE_URL` or missing tables:** Run `npm run db:push` from the repo root.
+- **Prod `Can't reach database` on Vercel:** confirm Supabase pooling URI, firewall/IP allowlists (if enabled), and that `sslmode=require` is present where Supabase expects it.
 
 ## Security notes
 
-- Never commit `.env` with secrets; [`prisma/.env`](prisma/.env) only pins a non-secret SQLite file path.
+- Never commit `.env` with secrets; [`prisma/.env`](prisma/.env) only pins a non-secret SQLite file path for local Prisma CLI.
 - Run `openssl rand -base64 32` whenever you rotate `AUTH_SECRET` (sessions invalidate).
