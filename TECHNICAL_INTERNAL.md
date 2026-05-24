@@ -6,6 +6,8 @@ _Last updated: 2026-05-24_
 
 Traffic flows Next.js middleware → guarded `/hub/**` routes → React server components hydrate Prisma payloads → Tailwind-rendered lockers. Credentials hit NextAuth’s authorize hook, bcrypt compares `password_hash`, JWT stores `sub = user.id`, middleware blocks anonymous `/hub`.
 
+**Presentation shell:** [`src/app/hub/layout.tsx`](src/app/hub/layout.tsx) renders [`HubNav`](src/components/hub/hub-nav.tsx) plus `max-w-6xl` main content; if JWT decode yields no usable `user` (id + email), guests see a glass-styled reconnect card linking to `/login` instead of the hub. **`src/app/hub/loading.tsx`** provides route-level skeleton placeholders; **`src/app/not-found.tsx`** is the App Router global 404 with matching sky/indigo accents. Tokens align with **`src/app/globals.css`** (`@theme inline` Geist stacks, dark `color-scheme`, focus-visible ring).
+
 Persistence is **SQLite** by default (`DATABASE_URL=file:dev.db` resolves to **`prisma/dev.db`**, via tracked [`prisma/.env`](prisma/.env) + runtime [`src/lib/bootstrap-database-url.ts`](src/lib/bootstrap-database-url.ts) imported before `@/lib/prisma` constructs `PrismaClient`). This avoids Prisma boot errors like “Environment variable not found: DATABASE_URL.”
 
 **Hosting path:** classwork tends to migrate to **Supabase Postgres + Vercel** next; switch `provider`/`DATABASE_URL`, run `npm run db:push` against the pooled Supabase URI, and deploy with `AUTH_SECRET` set (README **Deploy roadmap: SQLite → Supabase + Vercel**).
