@@ -28,7 +28,7 @@ Schema sync ships as **`npm run db:push`**. Checked-in migrations were intention
 
 ## Logic flows
 
-1. **Signup** (`/signup`) — `registerAndSignIn` lowers email case, bcrypt-hashes passwords (cost 12), creates `users`, invokes `signIn("credentials")`, then redirects `/hub`. Unauthenticated `/hub` visitors land on `/login`, which surfaces signup links (`src/app/login/page.tsx`). Prisma faults map to teammate-readable copy via [`src/lib/prisma-user-message.ts`](src/lib/prisma-user-message.ts).
+1. **Signup** (`/signup`) — `registerAndSignIn` lowers email case, bcrypt-hashes passwords (cost 12), creates `users`, invokes `signIn("credentials")`, then redirects `/hub`. Unauthenticated `/hub` visits hit [`middleware.ts`](middleware.ts) → **`/login`**, which surfaces `/signup`. Prisma faults map via [`src/lib/prisma-user-message.ts`](src/lib/prisma-user-message.ts): **P1001 = connectivity/runtime pool URL**, **P2021 = schema not pushed (`npm run db:push`)**, etc., so onboarding errors do not impersonate SQLite `dev.db` docs.
 2. **YouTube ingest** (`ingestYoutubeVideo`) extracts ID (`src/lib/youtube.ts`), rejects invalid strings, resolves duplicates early, grabs oEmbed (fallback title + CDN thumbnail), persists `videos.added_by_id`.
 3. **Resource ingest** validates URL (`z.string().url()`), optional title/note trimming, persists `resources`.
 4. **Watch roster** renders `videos.watches` sorted ascending by timestamp; duplicates blocked by uniqueness constraint — React keys reuse watcher `user.id`.
@@ -46,7 +46,7 @@ Schema sync ships as **`npm run db:push`**. Checked-in migrations were intention
 
 ### Pedagogical note
 
-Canonicalizing hostile URLs into deterministic keys mirrors **compiler IR normalization**: refuse ambiguous parses, persist only canonical reps, rely on relational constraints (`UNIQUE`) as the enforcement layer students can inspect in SQLite (`prisma studio`).
+Canonicalizing hostile URLs into deterministic keys mirrors **compiler IR normalization**: refuse ambiguous parses, persist only canonical reps, rely on relational constraints (`UNIQUE`) as the enforcement layer students can inspect via **Supabase Dashboard** or **`npm run db:studio`**.
 
 ## Edge cases / gotchas
 
