@@ -86,6 +86,8 @@ npm run db:studio # Prisma Studio
 
 3. **Redeploy** after env tweaks (`npm run build` invokes `postinstall-prisma`; the live app reads **`DATABASE_URL`** only—the direct URL satisfies Prisma tooling during install).
 
+**Production-only workflow:** You do **not** need `npm run dev` locally. You **do** need the Postgres URLs + secrets configured in **Vercel**. To create or evolve tables (**`npm run db:push`**), run Prisma **once from any machine or CI job** that can reach Supabase with the same `DATABASE_URL` / `DIRECT_URL` pair (not from the edge runtime). Merge & **redeploy** after server-side fixes so production serves the newest code.
+
 [**`src/auth.ts`**](src/auth.ts) keeps `trustHost: true` for proxies; confirm **`NEXTAUTH_URL`** matches prod if redirects mis-route.
 
 The Supabase **`db.*.supabase.co`** `:5432` endpoint can behave like **IPv6-only** on Free tiers ([Supabase connection docs](https://supabase.com/docs/guides/database/connecting-to-postgres)). If `:5432` never connects locally, toggle **IPv4 add-on/proxy** in Supabase or use their connectivity checker.
@@ -99,7 +101,7 @@ Learning Tracker vault patterns (canonical URLs, duplicate guard): [`docs/learni
 
 ## Troubleshooting
 
-- **`MissingSecret`:** Define `AUTH_SECRET` (or `NEXTAUTH_SECRET`) in `.env`/`.env.local`, restart dev server.
+- **`MissingSecret`:** On Vercel set **`AUTH_SECRET`**. Locally use `.env`/`.env.local`, then restart **`npm run dev`**.
 - **`Environment variable not found` (P1012 on `DATABASE_URL` / `DIRECT_URL`):** Copy [`.env.example`](.env.example) → `.env`; Prisma **`schema.prisma`** now expects **both** keys. Prefer **`npm run db:*`** so **`.env.local`** merges cleanly.
 - **`P1001` / `Can't reach database`:** Wrong password, typo in URI, firewall, or **`sslmode`** missing (`sslmode=require`).
 - **`P1001` on `db.<ref>.supabase.co:5432`:** Your network likely lacks IPv6 routing to Supabase **direct**. Set **`DIRECT_URL`** to the **Session** string (**`*.pooler.supabase.com`** + port **`5432`**, user **`postgres.<ref>`**) from **Dashboard → Connect → Prisma** ([docs](https://supabase.com/docs/guides/database/prisma)). Keep **`DATABASE_URL`** on **`:6543`** txn pool.
