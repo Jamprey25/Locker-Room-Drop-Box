@@ -26,7 +26,8 @@ Set **`AUTH_SECRET`** (`openssl rand -base64 32`; required on production).
 
 | Variable       | Purpose |
 |----------------|---------|
-| `DATABASE_URL` | Supabase Postgres (pooled **`6543`** for app/serverless); same value in `.env`/`.env.local` so Next + Prisma see it. |
+| `DATABASE_URL` | Supabase Postgres (pooled **`6543`** for app/serverless). Put it in **`.env` or `.env.local`** (`npm run db:*` loads both; **`npx prisma ...` alone does not read `.env.local`**). |
+
 | `AUTH_SECRET`  | JWT signing · **required on Vercel prod** |
 | `NEXTAUTH_SECRET` | Optional alias for `AUTH_SECRET` (NextAuth v4 naming). |
 
@@ -64,6 +65,8 @@ Older clones stored data in **`prisma/dev.db`**. The codebase is **PostgreSQL-on
 npm run dev      # Turbopack dev server
 npm run build    # Production build
 npm run lint     # ESLint
+npm run db:generate  # prisma generate (.env then .env.local)
+npm run db:validate # prisma validate
 npm run db:push  # sync schema → Postgres (Supabase-safe team workflow)
 npm run db:migrate  # prisma migrate dev (advanced)
 npm run db:studio # Prisma Studio
@@ -88,7 +91,7 @@ Learning Tracker vault patterns (canonical URLs, duplicate guard): [`docs/learni
 ## Troubleshooting
 
 - **`MissingSecret`:** Define `AUTH_SECRET` (or `NEXTAUTH_SECRET`) in `.env`/`.env.local`, restart dev server.
-- **`Environment variable not found: DATABASE_URL`:** Ensure `.env` exists at repo root (`cp .env.example .env`).
+- **`Environment variable not found: DATABASE_URL` (P1012):** Define **`DATABASE_URL`** in repo-root **`.env`** or **`.env.local`**, then use **`npm run db:push`** (not raw `npx prisma db push` unless you **`export DATABASE_URL`** first). Prisma’s CLI ignores **`.env.local`** unless you wrap it—as this repo does for **`npm run db:*`**.
 - **`P1001` / `Can't reach database`:** Wrong password, typo in URI, firewall, or **`sslmode`** missing (`sslmode=require`).
 - **`prisma db push` stalls on pool host:** Prefer **direct** URL for DDL (see Deploy section) or Retry from network without VPN interference.
 - **`db:push` complains drift:** Run **`prisma migrate diff`**/`reset` only after understanding data loss implications.

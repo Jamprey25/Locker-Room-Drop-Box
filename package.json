@@ -7,10 +7,11 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "db:generate": "prisma generate",
-    "db:push": "prisma db push",
-    "db:migrate": "prisma migrate dev",
-    "db:studio": "prisma studio",
+    "db:generate": "node scripts/run-prisma.mjs generate",
+    "db:push": "node scripts/run-prisma.mjs db push",
+    "db:migrate": "node scripts/run-prisma.mjs migrate dev",
+    "db:studio": "node scripts/run-prisma.mjs studio",
+    "db:validate": "node scripts/run-prisma.mjs validate",
     "postinstall": "node scripts/postinstall-prisma.mjs"
   },
   "dependencies": {
@@ -29,6 +30,7 @@
     "@types/node": "^22.15.18",
     "@types/react": "^19.1.4",
     "@types/react-dom": "^19.1.5",
+    "dotenv": "^17.4.2",
     "eslint": "^9.27.0",
     "eslint-config-next": "^15.3.2",
     "prisma": "^6.8.2",

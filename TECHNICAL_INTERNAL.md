@@ -10,6 +10,8 @@ Traffic flows Next.js middleware → guarded `/hub/**` routes → React server c
 
 **Persistence:** Prisma datasource is **`postgresql`** with **`DATABASE_URL`** (Supabase **pooler**/PgBouncer recommended—see README). [`scripts/postinstall-prisma.mjs`](scripts/postinstall-prisma.mjs) supplies a **non-connecting fallback** `DATABASE_URL` only during `npm install` so `prisma generate` succeeds without a populated `.env`. Runtime [`bootstrap-database-url.ts`](src/lib/bootstrap-database-url.ts) does **not** invent URLs; Next loads **`.env` / `.env.local`**. Older **SQLite (`prisma/dev.db`)** is no longer the default.
 
+**CLI:** Bare **`npx prisma …`** skips **`.env.local`**; **`npm run db:*`** delegates to [`scripts/run-prisma.mjs`](scripts/run-prisma.mjs) (loads `.env` then overrides with `.env.local`) so Postgres URLs live alongside Next-local secrets without P1012.
+
 **Hosting path:** **Supabase Postgres + Vercel** with pooled **`DATABASE_URL`** + **`AUTH_SECRET`**; run **`npm run db:push`** against an empty Postgres project whenever the schema evolves.
 
 YouTube ingestion keeps the invariant from Learning Tracker: every saved clip maps to canonical `https://www.youtube.com/watch?v=<videoId>` with `videos.url` enforcing uniqueness (`docs/learning-tracker-technical-reference.md` §3 / §4.1 mirrors this rationale at a trimmed scope).
