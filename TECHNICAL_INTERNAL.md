@@ -8,9 +8,9 @@ Traffic flows Next.js middleware → guarded `/hub/**` routes → React server c
 
 **Presentation shell:** [`src/app/hub/layout.tsx`](src/app/hub/layout.tsx) renders [`HubNav`](src/components/hub/hub-nav.tsx) plus `max-w-6xl` main content; if JWT decode yields no usable `user` (id + email), guests see a glass-styled reconnect card linking to `/login` instead of the hub. **`src/app/hub/loading.tsx`** provides route-level skeleton placeholders; **`src/app/not-found.tsx`** is the App Router global 404 with matching sky/indigo accents. Tokens align with **`src/app/globals.css`** (`@theme inline` Geist stacks, dark `color-scheme`, focus-visible ring).
 
-Persistence is **SQLite** by default (`DATABASE_URL=file:dev.db` resolves to **`prisma/dev.db`**, via tracked [`prisma/.env`](prisma/.env) + runtime [`src/lib/bootstrap-database-url.ts`](src/lib/bootstrap-database-url.ts) imported before `@/lib/prisma` constructs `PrismaClient`). This avoids Prisma boot errors like “Environment variable not found: DATABASE_URL.”
+**Persistence:** Prisma datasource is **`postgresql`** with **`DATABASE_URL`** (Supabase **pooler**/PgBouncer recommended—see README). [`scripts/postinstall-prisma.mjs`](scripts/postinstall-prisma.mjs) supplies a **non-connecting fallback** `DATABASE_URL` only during `npm install` so `prisma generate` succeeds without a populated `.env`. Runtime [`bootstrap-database-url.ts`](src/lib/bootstrap-database-url.ts) does **not** invent URLs; Next loads **`.env` / `.env.local`**. Older **SQLite (`prisma/dev.db`)** is no longer the default.
 
-**Hosting path:** classwork tends to migrate to **Supabase Postgres + Vercel** next; switch `provider`/`DATABASE_URL`, run `npm run db:push` against the pooled Supabase URI, and deploy with `AUTH_SECRET` set (README **Deploy roadmap: SQLite → Supabase + Vercel**).
+**Hosting path:** **Supabase Postgres + Vercel** with pooled **`DATABASE_URL`** + **`AUTH_SECRET`**; run **`npm run db:push`** against an empty Postgres project whenever the schema evolves.
 
 YouTube ingestion keeps the invariant from Learning Tracker: every saved clip maps to canonical `https://www.youtube.com/watch?v=<videoId>` with `videos.url` enforcing uniqueness (`docs/learning-tracker-technical-reference.md` §3 / §4.1 mirrors this rationale at a trimmed scope).
 
@@ -19,7 +19,7 @@ YouTube ingestion keeps the invariant from Learning Tracker: every saved clip ma
 | Concern               | Persistence                         | Mutation surface                          |
 |-----------------------|--------------------------------------|--------------------------------------------|
 | Auth session          | NextAuth JWT (no server session tbl) | `signIn`, `signOut`, middleware guard      |
-| Videos / Resources    | SQLite via Prisma                   | `/src/app/actions/hub.ts` server actions    |
+| Videos / Resources    | Postgres via Prisma / Supabase      | `/src/app/actions/hub.ts` server actions    |
 | Per-user watched flag | `video_watches` (`@@unique [userId, videoId]`) | `toggleVideoWatched` + optimistic Hub UI |
 
 Schema sync ships as **`npm run db:push`**. Checked-in migrations were intentionally dropped early on so every clone avoids toolchain drift while the schema is simple; Postgres-focused teams can reintroduce `prisma migrate` once URLs stabilize.
@@ -53,7 +53,7 @@ Canonicalizing hostile URLs into deterministic keys mirrors **compiler IR normal
 - Re-pasting duplicates returns `{ duplicate: true }`; UI explains the vault already tracked the lesson.
 - The Hub fingerprints server watch lists (`src/components/hub/hub-client.tsx`) so optimistic toggles reconcile with refreshed RSC payloads.
 - `authorize` catches Prisma failures and returns `null` (generic “invalid credentials” UX avoids leaking infra).
-- SQLite on ephemeral serverless disks is unsafe for multi-instance writes — Supabase Postgres + pooled `DATABASE_URL` is the pragmatic next step (`README`).
+- SQLite on ephemeral serverless disks is **legacy** for this repo (Postgres is required). Supabase + pooled `DATABASE_URL` is the production baseline.
 - `trustHost` remains enabled for proxies (Vercel). Align `NEXTAUTH_URL` with your canonical domain once deployed.
 
 ## Documentation maintenance checklist

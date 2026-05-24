@@ -30,9 +30,8 @@ yarn-error.log*
 # env files
 .env
 .env*.local
-!prisma/.env
 
-# local sqlite (default dev database file)
+# leftover local sqlite artifact from older clones
 /prisma/dev.db
 /prisma/dev.db-*
 
