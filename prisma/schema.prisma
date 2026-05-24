@@ -1,0 +1,64 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String?
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  videosAdded    Video[]      @relation("VideoAddedBy")
+  resourcesAdded Resource[]   @relation("ResourceAddedBy")
+  videoWatches   VideoWatch[]
+
+  @@map("users")
+}
+
+model Video {
+  id        String   @id @default(cuid())
+  url       String   @unique
+  title     String
+  thumbnail String
+  createdAt DateTime @default(now()) @map("created_at")
+  addedById String   @map("added_by_id")
+  addedBy   User     @relation("VideoAddedBy", fields: [addedById], references: [id], onDelete: Cascade)
+  watches   VideoWatch[]
+
+  @@index([addedById])
+  @@map("videos")
+}
+
+model Resource {
+  id        String   @id @default(cuid())
+  url       String
+  title     String?
+  note      String?
+  createdAt DateTime @default(now()) @map("created_at")
+  addedById String   @map("added_by_id")
+  addedBy   User     @relation("ResourceAddedBy", fields: [addedById], references: [id], onDelete: Cascade)
+
+  @@index([addedById])
+  @@map("resources")
+}
+
+/// One row per user per video once they tap "I've watched this"
+model VideoWatch {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  videoId   String   @map("video_id")
+  watchedAt DateTime @default(now()) @map("watched_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  video     Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, videoId])
+  @@index([videoId])
+  @@map("video_watches")
+}
