@@ -70,7 +70,7 @@ export default function LandingPage() {
         </span>
 
         <h1 className="text-pretty bg-gradient-to-br from-white via-slate-100 to-slate-400 bg-clip-text text-4xl font-semibold tracking-tight text-transparent sm:text-5xl lg:text-[3.35rem] lg:leading-[1.1]">
-          One place for clips, decks, and deal-room links.
+          Investment Learning Drop Box
         </h1>
 
         <p className="mt-6 max-w-lg text-pretty text-base leading-relaxed text-slate-400 sm:text-lg">
@@ -93,23 +93,6 @@ export default function LandingPage() {
             Log in
           </Link>
         </div>
-
-        <p className="mt-6 text-sm text-slate-500">
-          Sign up paths:{" "}
-          <Link
-            href="/signup"
-            className="font-medium text-sky-400/90 hover:text-sky-300"
-          >
-            /signup
-          </Link>
-          {" · "}
-          <Link
-            href="/register"
-            className="text-slate-500 hover:text-slate-400"
-          >
-            /register
-          </Link>
-        </p>
       </div>
 
       <div className="mx-auto mt-20 grid w-full max-w-3xl gap-4 sm:grid-cols-3 lg:mx-0 lg:max-w-none">

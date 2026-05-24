@@ -102,11 +102,14 @@ Learning Tracker vault patterns (canonical URLs, duplicate guard): [`docs/learni
 ## Troubleshooting
 
 - **`MissingSecret`:** On Vercel set **`AUTH_SECRET`**. Locally use `.env`/`.env.local`, then restart **`npm run dev`**.
+- **“Server error / problem with the server configuration” (Auth.js `Configuration`):** Almost always **`AUTH_SECRET` or `NEXTAUTH_SECRET` is missing or empty** in **Vercel → Environment Variables** (easy to accidentally remove when rotating DB URLs). Set a new secret: `openssl rand -base64 32`, redeploy **Production** (and **Preview** if you use preview deploys — scope vars to **All** environments if unsure).
 - **`Environment variable not found` (P1012 on `DATABASE_URL` / `DIRECT_URL`):** Copy [`.env.example`](.env.example) → `.env`; Prisma **`schema.prisma`** now expects **both** keys. Prefer **`npm run db:*`** so **`.env.local`** merges cleanly.
 - **`P1001` / `Can't reach database`:** Wrong password, typo in URI, firewall, or **`sslmode`** missing (`sslmode=require`).
 - **`P1001` on `db.<ref>.supabase.co:5432`:** Your network likely lacks IPv6 routing to Supabase **direct**. Set **`DIRECT_URL`** to the **Session** string (**`*.pooler.supabase.com`** + port **`5432`**, user **`postgres.<ref>`**) from **Dashboard → Connect → Prisma** ([docs](https://supabase.com/docs/guides/database/prisma)). Keep **`DATABASE_URL`** on **`:6543`** txn pool.
 - **`npm run db:push` never finishes (`6543`):** **`DIRECT_URL`** must **not** match txn **`6543`** — use session **`5432`** on the pool host (see [`.env.example`](.env.example)).
 - **`db:push` complains drift:** Run **`prisma migrate diff`**/`reset` only after understanding data loss implications.
+- **Signup shows “tables may be missing” but Table Editor lists `users`:** The deployed app uses **`DATABASE_URL` on Vercel**, which may target a **different Supabase project** than the dashboard you checked — confirm the **`postgres.<project-ref>`** segment matches. Strip or fix **`schema=`** in the URI (wrong `schema=` points Prisma at an empty schema). Use **Vercel → Logs** for the actual Prisma error code (many codes are not fixed by **`db:push`**).
+- **Signup shows only “Something went wrong”:** That was historically [`prismaToUserMessage`](/src/lib/prisma-user-message.ts)’s fallback when the driver error wasn’t classified or exceeded the displayed length. **Server-side `console.error("[registerAndSignIn]", …)`** now lands in **Vercel → Logs** — read the stack there first. If logs mention **`prepared statement`** with the pooler, add **`?sslmode=require&pgbouncer=true`** to **`DATABASE_URL`** on **`:6543`** (see [.env.example](.env.example)). Redeploy for clearer on-page messages.
 
 ## Security notes
 

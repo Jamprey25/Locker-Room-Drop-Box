@@ -28,7 +28,7 @@ Schema sync ships as **`npm run db:push`**. Checked-in migrations were intention
 
 ## Logic flows
 
-1. **Signup** (`/signup`) — `registerAndSignIn` lowers email case, bcrypt-hashes passwords (cost 12), creates `users`, invokes `signIn("credentials")`, then redirects `/hub`. Unauthenticated `/hub` visits hit [`middleware.ts`](middleware.ts) → **`/login`**, which surfaces `/signup`. Prisma faults map via [`src/lib/prisma-user-message.ts`](src/lib/prisma-user-message.ts): **P1001 = connectivity/runtime pool URL**, **P2021 = schema not pushed (`npm run db:push`)**, etc., so onboarding errors do not impersonate SQLite `dev.db` docs.
+1. **Signup** (`/signup`) — `registerAndSignIn` lowers email case, bcrypt-hashes passwords (cost 12), creates `users`, invokes `signIn("credentials")`, then redirects `/hub`. Unauthenticated `/hub` visits hit [`middleware.ts`](middleware.ts) → **`/login`**, which surfaces `/signup`. Prisma faults map via [`src/lib/prisma-user-message.ts`](src/lib/prisma-user-message.ts): **P1001 = connectivity/runtime pool URL**, **`P2021` / `P2022` = table/column mismatch vs deployed schema (`npm run db:push` against prod DB)**; **other Prisma codes (e.g. `P2025`) keep a generic hint** instead of implying missing tables, so onboarding errors do not falsely claim SQLite `dev.db` drift.
 2. **YouTube ingest** (`ingestYoutubeVideo`) extracts ID (`src/lib/youtube.ts`), rejects invalid strings, resolves duplicates early, grabs oEmbed (fallback title + CDN thumbnail), persists `videos.added_by_id`.
 3. **Resource ingest** validates URL (`z.string().url()`), optional title/note trimming, persists `resources`.
 4. **Watch roster** renders `videos.watches` sorted ascending by timestamp; duplicates blocked by uniqueness constraint — React keys reuse watcher `user.id`.
@@ -55,6 +55,8 @@ Canonicalizing hostile URLs into deterministic keys mirrors **compiler IR normal
 - Re-pasting duplicates returns `{ duplicate: true }`; UI explains the vault already tracked the lesson.
 - The Hub fingerprints server watch lists (`src/components/hub/hub-client.tsx`) so optimistic toggles reconcile with refreshed RSC payloads.
 - `authorize` catches Prisma failures and returns `null` (generic “invalid credentials” UX avoids leaking infra).
+- **`registerAndSignIn`** catches Prisma **`PrismaClientUnknownRequestError`** and maps PgBouncer **“prepared statement”** failures to **`pgbouncer=true` + sslmode docs** (`src/lib/prisma-user-message.ts`); **`console.error("[registerAndSignIn]", …)`** enables Vercel log correlation beyond on-page truncation. **`CredentialsSignin`** after account creation prompts manual login retry.
+- Auth.js **`Configuration`** / built-in **“Server configuration”** page is emitted when **`assertConfig`** rejects the options (typically **missing `secret`** → **`AUTH_SECRET`/`NEXTAUTH_SECRET` unset on Vercel**) —see **`resolveAuthSecret()`** in [`src/auth.ts`](src/auth.ts).
 - SQLite on ephemeral serverless disks is **legacy** for this repo (Postgres is required). Supabase + pooled `DATABASE_URL` is the production baseline.
 - `trustHost` remains enabled for proxies (Vercel). Align `NEXTAUTH_URL` with your canonical domain once deployed.
 

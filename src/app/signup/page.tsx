@@ -60,7 +60,6 @@ export default function SignupPage() {
             required
             autoComplete="email"
             className={inputCls}
-            placeholder="you@school.edu"
           />
         </label>
         <label className="flex flex-col gap-2 text-xs font-medium text-slate-400">

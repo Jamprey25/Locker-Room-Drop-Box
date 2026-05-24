@@ -5,6 +5,7 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { auth, signIn } from "@/auth";
+import { CredentialsSignin } from "next-auth";
 import { ingestYoutubeVideo } from "@/lib/youtube-ingest";
 import { prismaToUserMessage } from "@/lib/prisma-user-message";
 
@@ -64,6 +65,14 @@ export async function registerAndSignIn(formData: FormData): Promise<
 
     return { ok: true };
   } catch (e) {
+    console.error("[registerAndSignIn]", e);
+    if (e instanceof CredentialsSignin) {
+      return {
+        ok: false,
+        error:
+          "Sign-in failed right after signup. Your account may still exist — try logging in manually.",
+      };
+    }
     return { ok: false, error: prismaToUserMessage(e) };
   }
 }

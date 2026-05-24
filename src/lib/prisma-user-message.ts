@@ -36,15 +36,18 @@ export function prismaToUserMessage(
       case "P1003":
         return `${CONNECT_HINT} (Database/catalog not reachable or wrong name.)`;
       case "P2021":
+      case "P2022":
         return SCHEMA_SYNC_HINT;
-      default:
-        if (
-          cause.code.startsWith("P20") ||
-          msg.toLowerCase().includes("does not exist")
-        ) {
+      default: {
+        // Avoid treating every Prisma Data Proxy / query error (e.g. P2025 “not found”) as “schema not pushed”.
+        const looksLikeMissingRelation =
+          /\bdoes not exist\b/i.test(msg) &&
+          /\b(relation|table|column)\b|`[^`]+`/i.test(msg);
+        if (looksLikeMissingRelation) {
           return `${SCHEMA_SYNC_HINT} (${cause.code})`;
         }
         return `Database issue (${cause.code}). Retry in a minute; check Supabase status if it persists.`;
+      }
     }
   }
 
@@ -63,6 +66,20 @@ export function prismaToUserMessage(
       return `Database URL looks invalid or TLS failed. Verify .env string and sslmode/pgBouncer params. ${CONNECT_HINT}`;
     }
     return `${CONNECT_HINT} (${msg.split("\n")[0]?.slice(0, 140) ?? "init error"})`;
+  }
+
+  if (cause instanceof Prisma.PrismaClientUnknownRequestError) {
+    if (/prepared statement/i.test(msg)) {
+      return "Postgres pool / PgBouncer mismatch: append `?sslmode=require&pgbouncer=true` to your Supabase `:6543` DATABASE_URL (see README).";
+    }
+    const line = msg.split("\n")[0]?.trim() ?? "";
+    if (line.length > 0 && line.length <= 220) return line;
+    if (line.length > 220) return `${line.slice(0, 200)}…`;
+    return "Database rejected a query unexpectedly. Copy the `[registerAndSignIn]` line from Vercel Logs for details.";
+  }
+
+  if (cause instanceof Prisma.PrismaClientValidationError) {
+    return "Database request didn’t match the schema. Push the schema to this database (`npm run db:push` with prod URLs).";
   }
 
   if (msg.includes("Environment variable not found: DATABASE_URL")) {
@@ -85,5 +102,8 @@ export function prismaToUserMessage(
     return SCHEMA_SYNC_HINT;
   }
 
-  return msg.length > 0 && msg.length < 220 ? msg : fallback;
+  const firstLine = msg.split("\n")[0]?.trim() ?? "";
+  if (firstLine.length === 0) return fallback;
+  if (firstLine.length <= 220) return firstLine;
+  return `${firstLine.slice(0, 200)}…`;
 }
