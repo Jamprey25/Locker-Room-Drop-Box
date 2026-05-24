@@ -44,15 +44,23 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
         const email = parsed.data.email.toLowerCase();
 
-        const user = await prisma.user.findUnique({
-          where: { email },
-        });
-        if (!user) return null;
+        try {
+          const user = await prisma.user.findUnique({
+            where: { email },
+          });
+          if (!user) return null;
 
-        const ok = await bcrypt.compare(parsed.data.password, user.passwordHash);
-        if (!ok) return null;
+          const ok = await bcrypt.compare(
+            parsed.data.password,
+            user.passwordHash
+          );
+          if (!ok) return null;
 
-        return { id: user.id, email: user.email, name: user.name ?? "" };
+          return { id: user.id, email: user.email, name: user.name ?? "" };
+        } catch (e) {
+          console.error("[auth] Database error during authorize:", e);
+          return null;
+        }
       },
     }),
   ],

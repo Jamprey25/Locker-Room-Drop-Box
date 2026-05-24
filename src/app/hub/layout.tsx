@@ -1,5 +1,13 @@
+import type { Metadata } from "next";
+import Link from "next/link";
 import { auth } from "@/auth";
 import { HubNav } from "@/components/hub/hub-nav";
+
+export const metadata: Metadata = {
+  title: "Hub · Locker Room Dropbox",
+  description:
+    "Shared investing videos and resources for your locker room cohort.",
+};
 
 export default async function HubLayout({
   children,
@@ -18,8 +26,11 @@ export default async function HubLayout({
 
   if (!user) {
     return (
-      <div className="min-h-dvh bg-zinc-950 px-4 py-12 text-center text-sm text-red-400">
-        Session unavailable — refresh and sign back in.
+      <div className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-zinc-950 px-4 py-12 text-center text-sm text-red-300">
+        <p>Session unavailable — refresh and sign back in.</p>
+        <Link href="/login" className="text-amber-400 underline hover:text-amber-300">
+          Return to login
+        </Link>
       </div>
     );
   }

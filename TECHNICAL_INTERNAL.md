@@ -6,55 +6,56 @@ _Last updated: 2026-05-24_
 
 Traffic flows Next.js middleware → guarded `/hub/**` routes → React server components hydrate Prisma payloads → Tailwind-rendered lockers. Credentials hit NextAuth’s authorize hook, bcrypt compares `password_hash`, JWT stores `sub = user.id`, middleware blocks anonymous `/hub`.
 
-YouTube ingestion keeps the invariant from Learning Tracker: every saved clip maps to canonical `https://www.youtube.com/watch?v=<videoId>` with `videos.url` enforcing uniqueness (`docs/learning-tracker-technical-reference.md` §3 / §4.1 mirror this rationale at a trimmed scope).
+Persistence is **SQLite** by default (`DATABASE_URL=file:dev.db` resolves to **`prisma/dev.db`**, via tracked [`prisma/.env`](prisma/.env) + runtime [`src/lib/bootstrap-database-url.ts`](src/lib/bootstrap-database-url.ts) imported before `@/lib/prisma` constructs `PrismaClient`). This avoids Prisma boot errors like “Environment variable not found: DATABASE_URL.” Production deployers normally swap to Postgres (see README).
+
+YouTube ingestion keeps the invariant from Learning Tracker: every saved clip maps to canonical `https://www.youtube.com/watch?v=<videoId>` with `videos.url` enforcing uniqueness (`docs/learning-tracker-technical-reference.md` §3 / §4.1 mirrors this rationale at a trimmed scope).
 
 ## State management
-
-Mutable state splits three ways:
 
 | Concern               | Persistence                         | Mutation surface                          |
 |-----------------------|--------------------------------------|--------------------------------------------|
 | Auth session          | NextAuth JWT (no server session tbl) | `signIn`, `signOut`, middleware guard      |
-| Videos / Resources    | Postgres via Prisma                 | `/src/app/actions/hub.ts` server actions    |
-| Per-user watched flag | `video_watches` join table (`@@unique [userId, videoId]`) | `toggleVideoWatched` + optimistic Hub UI |
+| Videos / Resources    | SQLite via Prisma                   | `/src/app/actions/hub.ts` server actions    |
+| Per-user watched flag | `video_watches` (`@@unique [userId, videoId]`) | `toggleVideoWatched` + optimistic Hub UI |
 
-Videos never embed watch progress from YouTube APIs; teammates must explicitly toggle “I watched this,” which emits a join row surfaced in the Locker UI roster.
+Schema sync ships as **`npm run db:push`**. Checked-in migrations were intentionally dropped early on so every clone avoids toolchain drift while the schema is simple; Postgres-focused teams can reintroduce `prisma migrate` once URLs stabilize.
 
 ## Logic flows
 
-1. **Signup** (`/signup`) — `registerAndSignIn` lowers email case, bcrypt-hashes passwords (cost 12), creates `users`, invokes `signIn("credentials")`, then redirects `/hub`. Unauthenticated `/hub` visitors land on `/login`, which surfaces the same signup links in chrome + footer (`src/app/login/page.tsx`).
+1. **Signup** (`/signup`) — `registerAndSignIn` lowers email case, bcrypt-hashes passwords (cost 12), creates `users`, invokes `signIn("credentials")`, then redirects `/hub`. Unauthenticated `/hub` visitors land on `/login`, which surfaces signup links (`src/app/login/page.tsx`). Prisma faults map to teammate-readable copy via [`src/lib/prisma-user-message.ts`](src/lib/prisma-user-message.ts).
 2. **YouTube ingest** (`ingestYoutubeVideo`) extracts ID (`src/lib/youtube.ts`), rejects invalid strings, resolves duplicates early, grabs oEmbed (fallback title + CDN thumbnail), persists `videos.added_by_id`.
 3. **Resource ingest** validates URL (`z.string().url()`), optional title/note trimming, persists `resources`.
-4. **Watch roster** renders `videos.watches` sorted ascending by timestamp; duplicates impossible per uniqueness constraint — React keys use watcher `user.id`.
+4. **Watch roster** renders `videos.watches` sorted ascending by timestamp; duplicates blocked by uniqueness constraint — React keys reuse watcher `user.id`.
 
 ## Dependencies
 
 | Package        | Reason |
 |----------------|--------|
 | `next` / `react` | App Router SSR + streaming-friendly UI shells |
-| `next-auth`    | Batteries-included credentials JWT without standing up custom session cookies |
-| `prisma`       | Typed Postgres access + relational constraints enforcing vault dedupe/watch uniqueness |
-| `bcryptjs`     | Stable password hashing in pure JS (easier deployment story than native bcrypt) |
-| `zod`          | Shared validation for signup + ingest boundaries |
-| `tailwindcss`  | Utility styling with zero bespoke CSS tooling beyond `globals.css` |
-
-## Edge cases / gotchas
-
-- YouTube shorts, embed URLs, legacy `youtu.be` links funnel through regex parsing; unrecognized patterns throw a user-facing validation error rather than silently failing.
-- oEmbed outages fall back to `YouTube video <id>` + `hqdefault.jpg` thumbnails so lockers stay usable offline from Google metadata endpoints.
-- Re-pasting duplicates returns `{ duplicate: true }` so UX can shout that the locker already tracked the lesson while still triggering `router.refresh()` to sync ordering.
-- The Hub balances optimistic watch toggles with a fingerprint keyed `useEffect`, so subsequent `router.refresh()` payloads hydrate `watchedIds` without trapping React state behind stale `useState` initializers (`src/components/hub/hub-client.tsx`).
-- `resolveAuthSecret` (`src/auth.ts`) reads `AUTH_SECRET` or `NEXTAUTH_SECRET`, logs a dev fallback when `NODE_ENV !== "production"` if both are missing (so Auth routes don’t 500 during first-time setup), and leaves `secret` undefined during production builds/run without env so deploys must supply a real secret.
-- `trustHost` is enabled for deployments behind proxies (Vercel). Lock down hosts via official NextAuth guides if exposing custom infra.
+| `next-auth`    | Credentials JWT sessions without relational session rows |
+| `prisma`       | Typed relational access + FK/cascade deletes + dedupe uniqueness |
+| `bcryptjs`     | Stable password hashing in pure JS |
+| `zod`          | Signup / ingest boundaries |
+| `tailwindcss`  | Utility styling |
 
 ### Pedagogical note
 
-Canonicalizing hostile user URLs before persistence is textbook **input sanitation + invariant preservation**: you derive a deterministic key (`videoId`) and refuse ambiguous states, analogous to normalization layers in compilers or relational dedupe pipelines. Teach this alongside database unique indexes so students connect application validation with constraint enforcement.
+Canonicalizing hostile URLs into deterministic keys mirrors **compiler IR normalization**: refuse ambiguous parses, persist only canonical reps, rely on relational constraints (`UNIQUE`) as the enforcement layer students can inspect in SQLite (`prisma studio`).
+
+## Edge cases / gotchas
+
+- YouTube shorts, embed URLs, legacy `youtu.be` links funnel through regex parsing; unrecognized patterns throw a validation error surfaced to UI.
+- oEmbed outages fall back to `YouTube video <id>` + `hqdefault.jpg` thumbnails so lockers remain usable offline from Google endpoints.
+- Re-pasting duplicates returns `{ duplicate: true }`; UI explains the vault already tracked the lesson.
+- The Hub fingerprints server watch lists (`src/components/hub/hub-client.tsx`) so optimistic toggles reconcile with refreshed RSC payloads.
+- `authorize` catches Prisma failures and returns `null` (generic “invalid credentials” UX avoids leaking infra).
+- SQLite on ephemeral serverless disks is unsafe for multi-instance writes — upgrade to Postgres + pooling for production fleets.
+- `trustHost` remains enabled for proxies (Vercel). Harden hosts per Auth.js docs for bespoke infra.
 
 ## Documentation maintenance checklist
 
-Whenever routing, schema, env vars, or auth flows diverge:
+Whenever routing, schema, env bootstrap, DB provider, or auth flows diverge:
 
-1. Reflect “what/how” updates in `/README.md`.
-2. Extend this `/TECHNICAL_INTERNAL.md` with new flows and edge reasoning.
-3. Mention behavioral deltas in commits so collaborators know README expectations changed.
+1. Reflect onboarding steps in `/README.md`.
+2. Extend this `/TECHNICAL_INTERNAL.md`.
+3. Call out deltas in commits so teammates know SQLite vs Postgres drift.

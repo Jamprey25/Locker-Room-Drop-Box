@@ -30,6 +30,11 @@ yarn-error.log*
 # env files
 .env
 .env*.local
+!prisma/.env
+
+# local sqlite (default dev database file)
+/prisma/dev.db
+/prisma/dev.db-*
 
 # typescript
 *.tsbuildinfo

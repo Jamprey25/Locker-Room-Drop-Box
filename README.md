@@ -9,7 +9,7 @@ Resources, and mark videos as watched so everyone can see who has caught up.
 
 - Next.js 15 (App Router) + React 19 + TypeScript
 - NextAuth credentials (JWT sessions, bcrypt hashed passwords)
-- Prisma ORM + PostgreSQL
+- Prisma ORM + **SQLite by default** (local `prisma/dev.db`, zero Postgres setup)
 - Tailwind CSS 4 + YouTube oEmbed metadata ingest
 
 ## Quick start
@@ -20,25 +20,25 @@ Resources, and mark videos as watched so everyone can see who has caught up.
 npm install
 ```
 
-### 2) Environment
-
-Copy [.env.example](.env.example) to `.env` and supply:
-
-| Variable       | Purpose                                      |
-|----------------|----------------------------------------------|
-| `DATABASE_URL` | Postgres connection string (Supabase/neon/pg) |
-| `AUTH_SECRET`  | JWT signing secret (`openssl rand -base64 32`) |
-| `NEXTAUTH_SECRET` | Optional alias accepted for `AUTH_SECRET` (NextAuth v4 naming) |
-
-**Local dev convenience:** If you still need to boot before configuring env, Auth.js picks a fixed insecure fallback only while `NODE_ENV !== "production"`. Put a real secret in `.env.local`/`AUTH_SECRET` as soon as you can so cookies stay predictable.
-
-### 3) Database
+### 2) Create the local database (required once per clone)
 
 ```bash
-npm run db:migrate
+npm run db:push
 ```
 
-(Use `npm run db:push` instead if you purely want prototyping without migrations.)
+[`prisma/.env`](prisma/.env) sets `DATABASE_URL="file:dev.db"`, which Prisma resolves to **`prisma/dev.db`** (next to `schema.prisma`). If runtime still lacks `DATABASE_URL` during dev (before you copy [.env.example](.env.example)), [`src/lib/bootstrap-database-url.ts`](src/lib/bootstrap-database-url.ts) injects that same SQLite URL automatically.
+
+### 3) Environment (recommended)
+
+Copy [.env.example](.env.example) to `.env` or `.env.local` when you want explicit control:
+
+| Variable       | Purpose |
+|----------------|---------|
+| `DATABASE_URL` | Default `file:dev.db` → **`prisma/dev.db`**. For Postgres later use `postgresql://...`. |
+| `AUTH_SECRET`  | JWT signing secret (`openssl rand -base64 32`) |
+| `NEXTAUTH_SECRET` | Optional alias for `AUTH_SECRET` (NextAuth v4 naming). |
+
+Dev auth fallback: Auth.js uses a deterministic dev JWT secret whenever `NODE_ENV !== "production"` and `AUTH_SECRET` is absent.
 
 ### 4) Dev server
 
@@ -46,33 +46,39 @@ npm run db:migrate
 npm run dev
 ```
 
-Landing page: [/](http://localhost:3000) · **Sign up:** [/signup](http://localhost:3000/signup) (same as [/register](http://localhost:3000/register)) · **Log in:** [/login](http://localhost:3000/login) · Hub (after login): [/hub](http://localhost:3000/hub).
+Landing: [/](http://localhost:3000) · Sign up [/signup](http://localhost:3000/signup) (aliases [/register](http://localhost:3000/register)) · Log in [/login](http://localhost:3000/login) · Locker [/hub](http://localhost:3000/hub).
 
 ## Scripts
 
 ```bash
-npm run dev           # Turbopack dev server
-npm run build         # Production build
-npm run lint          # ESLint
-npm run db:migrate    # prisma migrate dev
-npm run db:studio     # Prisma Studio
+npm run dev      # Turbopack dev server
+npm run build    # Production build
+npm run lint     # ESLint
+npm run db:push  # sync schema → SQLite (default team workflow)
+npm run db:migrate  # prisma migrate dev (advanced / custom DB)
+npm run db:studio # Prisma Studio
 ```
+
+### Moving to Postgres (Neon / Supabase) later
+
+1. Provision a Postgres URL and put it in `DATABASE_URL`.
+2. In [`prisma/schema.prisma`](prisma/schema.prisma) change `provider` from `"sqlite"` to `"postgresql"`.
+3. Run `npm run db:push` (or `npm run db:migrate` once you regenerate migrations).
+
+Serverless hosts (for example Vercel) normally expect Postgres rather than SQLite.
 
 ## Repo & inspiration
 
-Upstream Git remote: [`https://github.com/Jamprey25/Locker-Room-Drop-Box.git`](https://github.com/Jamprey25/Locker-Room-Drop-Box.git).
+Upstream: [`https://github.com/Jamprey25/Locker-Room-Drop-Box.git`](https://github.com/Jamprey25/Locker-Room-Drop-Box.git).
 
-The YouTube ingestion pattern mirrors Learning Tracker (“vault”) — canonical watch URLs, duplicate guard, lightweight oEmbed enrichment. Reference copies live in `/docs`:
-
-- [`docs/learning-tracker-readme-reference.md`](docs/learning-tracker-readme-reference.md)
-- [`docs/learning-tracker-technical-reference.md`](docs/learning-tracker-technical-reference.md)
+Learning Tracker vault patterns (canonical URLs, duplicate guard): [`docs/learning-tracker-technical-reference.md`](docs/learning-tracker-technical-reference.md).
 
 ## Troubleshooting
 
-- **`MissingSecret` / `[auth][error] MissingSecret`:** Set **`AUTH_SECRET`** (or **`NEXTAUTH_SECRET`**) in `.env` / `.env.local`, then restart `npm run dev`. In strict production you must deploy with this variable populated.
+- **`MissingSecret`:** Define `AUTH_SECRET` (or `NEXTAUTH_SECRET`) in `.env.local`, restart dev server.
+- **Signup / hub errors referencing `DATABASE_URL` or missing tables:** Run `npm run db:push` from the repo root.
 
 ## Security notes
 
-- Never commit `.env`.
-- Prefer TLS (`sslmode=require`) for hosted Postgres URLs.
-- Run `openssl rand -base64 32` (or similar) whenever you rotate `AUTH_SECRET`; doing so logs everyone out immediately.
+- Never commit `.env` with secrets; [`prisma/.env`](prisma/.env) only pins a non-secret SQLite file path.
+- Run `openssl rand -base64 32` whenever you rotate `AUTH_SECRET` (sessions invalidate).

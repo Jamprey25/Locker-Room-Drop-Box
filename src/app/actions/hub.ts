@@ -6,6 +6,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { auth, signIn } from "@/auth";
 import { ingestYoutubeVideo } from "@/lib/youtube-ingest";
+import { prismaToUserMessage } from "@/lib/prisma-user-message";
 
 export async function registerAndSignIn(formData: FormData): Promise<
   | { ok: true }
@@ -28,39 +29,43 @@ export async function registerAndSignIn(formData: FormData): Promise<
     return { ok: false, error: "Check your name, email, and password" };
   }
 
-  const exists = await prisma.user.findUnique({
-    where: { email: data.email.toLowerCase() },
-  });
-  if (exists) return { ok: false, error: "That email is already registered." };
+  try {
+    const exists = await prisma.user.findUnique({
+      where: { email: data.email.toLowerCase() },
+    });
+    if (exists) return { ok: false, error: "That email is already registered." };
 
-  const passwordHash = await bcrypt.hash(data.password, 12);
-  await prisma.user.create({
-    data: {
-      name: data.name,
+    const passwordHash = await bcrypt.hash(data.password, 12);
+    await prisma.user.create({
+      data: {
+        name: data.name,
+        email: data.email.toLowerCase(),
+        passwordHash,
+      },
+    });
+
+    const signResult = await signIn("credentials", {
+      redirect: false,
       email: data.email.toLowerCase(),
-      passwordHash,
-    },
-  });
+      password: data.password,
+    });
 
-  const signResult = await signIn("credentials", {
-    redirect: false,
-    email: data.email.toLowerCase(),
-    password: data.password,
-  });
+    if (
+      typeof signResult === "object" &&
+      signResult &&
+      "error" in signResult &&
+      signResult.error
+    ) {
+      return {
+        ok: false,
+        error: "Account created — sign-in failed. Try logging in manually.",
+      };
+    }
 
-  if (
-    typeof signResult === "object" &&
-    signResult &&
-    "error" in signResult &&
-    signResult.error
-  ) {
-    return {
-      ok: false,
-      error: "Account created — sign-in failed. Try logging in manually.",
-    };
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: prismaToUserMessage(e) };
   }
-
-  return { ok: true };
 }
 
 export async function addYoutubeVideo(payload: {
@@ -81,8 +86,7 @@ export async function addYoutubeVideo(payload: {
     revalidatePath("/hub");
     return { ok: true, duplicate: result.duplicate };
   } catch (e) {
-    const msg = e instanceof Error ? e.message : "Something went wrong";
-    return { ok: false, error: msg };
+    return { ok: false, error: prismaToUserMessage(e) };
   }
 }
 
@@ -107,17 +111,21 @@ export async function addResource(payload: {
     return { ok: false, error: "Use a full link (https://...)" };
   }
 
-  await prisma.resource.create({
-    data: {
-      url: parsed.data.url,
-      title: parsed.data.title?.trim() || null,
-      note: parsed.data.note?.trim() || null,
-      addedById: uid,
-    },
-  });
+  try {
+    await prisma.resource.create({
+      data: {
+        url: parsed.data.url,
+        title: parsed.data.title?.trim() || null,
+        note: parsed.data.note?.trim() || null,
+        addedById: uid,
+      },
+    });
 
-  revalidatePath("/hub");
-  return { ok: true };
+    revalidatePath("/hub");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: prismaToUserMessage(e) };
+  }
 }
 
 export async function toggleVideoWatched(payload: {
@@ -130,21 +138,25 @@ export async function toggleVideoWatched(payload: {
   const videoId = payload.videoId?.trim();
   if (!videoId) return { ok: false, error: "Missing video id." };
 
-  const existing = await prisma.videoWatch.findUnique({
-    where: { userId_videoId: { userId: uid, videoId } },
-  });
+  try {
+    const existing = await prisma.videoWatch.findUnique({
+      where: { userId_videoId: { userId: uid, videoId } },
+    });
 
-  if (existing) {
-    await prisma.videoWatch.delete({
-      where: { id: existing.id },
+    if (existing) {
+      await prisma.videoWatch.delete({
+        where: { id: existing.id },
+      });
+      revalidatePath("/hub");
+      return { ok: true, watched: false };
+    }
+
+    await prisma.videoWatch.create({
+      data: { userId: uid, videoId },
     });
     revalidatePath("/hub");
-    return { ok: true, watched: false };
+    return { ok: true, watched: true };
+  } catch (e) {
+    return { ok: false, error: prismaToUserMessage(e) };
   }
-
-  await prisma.videoWatch.create({
-    data: { userId: uid, videoId },
-  });
-  revalidatePath("/hub");
-  return { ok: true, watched: true };
 }
