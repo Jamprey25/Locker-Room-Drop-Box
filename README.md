@@ -27,7 +27,10 @@ Copy [.env.example](.env.example) to `.env` and supply:
 | Variable       | Purpose                                      |
 |----------------|----------------------------------------------|
 | `DATABASE_URL` | Postgres connection string (Supabase/neon/pg) |
-| `AUTH_SECRET`  | Signing secret (`openssl rand -base64 32`)   |
+| `AUTH_SECRET`  | JWT signing secret (`openssl rand -base64 32`) |
+| `NEXTAUTH_SECRET` | Optional alias accepted for `AUTH_SECRET` (NextAuth v4 naming) |
+
+**Local dev convenience:** If you still need to boot before configuring env, Auth.js picks a fixed insecure fallback only while `NODE_ENV !== "production"`. Put a real secret in `.env.local`/`AUTH_SECRET` as soon as you can so cookies stay predictable.
 
 ### 3) Database
 
@@ -63,6 +66,10 @@ The YouTube ingestion pattern mirrors Learning Tracker (“vault”) — canonic
 
 - [`docs/learning-tracker-readme-reference.md`](docs/learning-tracker-readme-reference.md)
 - [`docs/learning-tracker-technical-reference.md`](docs/learning-tracker-technical-reference.md)
+
+## Troubleshooting
+
+- **`MissingSecret` / `[auth][error] MissingSecret`:** Set **`AUTH_SECRET`** (or **`NEXTAUTH_SECRET`**) in `.env` / `.env.local`, then restart `npm run dev`. In strict production you must deploy with this variable populated.
 
 ## Security notes
 

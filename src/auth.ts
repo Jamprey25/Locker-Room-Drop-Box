@@ -4,6 +4,27 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 
+function resolveAuthSecret(): string | undefined {
+  const explicit =
+    process.env.AUTH_SECRET?.trim() || process.env.NEXTAUTH_SECRET?.trim();
+  if (explicit && explicit.length > 0) {
+    return explicit;
+  }
+
+  if (process.env.NODE_ENV === "production") {
+    console.error(
+      "[auth] AUTH_SECRET or NEXTAUTH_SECRET must be set in production.",
+    );
+    return undefined;
+  }
+
+  console.warn(
+    "[auth] AUTH_SECRET (or NEXTAUTH_SECRET) is unset — using a fixed dev fallback. Add AUTH_SECRET to .env.local for stable JWT signing.",
+  );
+  // Same dev fallback every run so restarting the dev server keeps sessions decryptable locally.
+  return "local-dev-locker-room-auth-secret-at-least-thirty-two-chars";
+}
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   trustHost: true,
   providers: [
@@ -51,7 +72,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     strategy: "jwt",
     maxAge: 30 * 24 * 60 * 60,
   },
-  secret: process.env.AUTH_SECRET,
+  secret: resolveAuthSecret(),
   pages: {
     signIn: "/login",
   },

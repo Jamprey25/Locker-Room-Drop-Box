@@ -44,7 +44,7 @@ Videos never embed watch progress from YouTube APIs; teammates must explicitly t
 - oEmbed outages fall back to `YouTube video <id>` + `hqdefault.jpg` thumbnails so lockers stay usable offline from Google metadata endpoints.
 - Re-pasting duplicates returns `{ duplicate: true }` so UX can shout that the locker already tracked the lesson while still triggering `router.refresh()` to sync ordering.
 - The Hub balances optimistic watch toggles with a fingerprint keyed `useEffect`, so subsequent `router.refresh()` payloads hydrate `watchedIds` without trapping React state behind stale `useState` initializers (`src/components/hub/hub-client.tsx`).
-- `AUTH_SECRET` must exist in prod; JWT signing fails unpredictably otherwise.
+- `resolveAuthSecret` (`src/auth.ts`) reads `AUTH_SECRET` or `NEXTAUTH_SECRET`, logs a dev fallback when `NODE_ENV !== "production"` if both are missing (so Auth routes don’t 500 during first-time setup), and leaves `secret` undefined during production builds/run without env so deploys must supply a real secret.
 - `trustHost` is enabled for deployments behind proxies (Vercel). Lock down hosts via official NextAuth guides if exposing custom infra.
 
 ### Pedagogical note
