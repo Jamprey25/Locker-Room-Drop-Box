@@ -22,16 +22,16 @@ cp .env.example .env
 
 Edit **`.env`**: paste **two** Supabase URIs (**Settings → Database → Connection strings**):
 
-- **`DATABASE_URL`** — **transaction pool / shared pooler** (often **`…pooler.supabase.com`**, **`6543`**) · what **Next.js** uses at runtime · append **`sslmode=require&pgbouncer=true`**.
+- **`DATABASE_URL`** — **Transaction pool (Supavisor)** — **`…pooler.supabase.com:6543`** · what **Next.js** uses · append **`pgbouncer=true`** (plus **`sslmode=require`**) · [Supabase + Prisma](https://supabase.com/docs/guides/database/prisma).
 
-- **`DIRECT_URL`** — **direct Postgres** (**`db.<project-ref>.supabase.co`**, **`5432`**) · what **`npm run db:push`** / migrations must use (**DDL hangs on `:6543` poolers way too often — that’s why your push sat forever**).
+- **`DIRECT_URL`** — **`prisma` `directUrl`** for **`db push` / migrate**. Prefer **`…pooler.supabase.com:5432`** (**Session pool**, user **`postgres.<ref>`**) so **IPv4** works. Avoid relying on **`db.<ref>.supabase.co:5432`** locally — many networks get **`P1001`** (often IPv6-only). Do **not** reuse the `:6543` string here (`db push` would hang).
 
 Set **`AUTH_SECRET`** (`openssl rand -base64 32`; required on production).
 
 | Variable       | Purpose |
 |----------------|---------|
 | `DATABASE_URL` | Pooled Postgres (**often `:6543`**) · app + cold starts. Loaded via **`npm run db:*` + `.env`/`.env.local`**. Raw **`npx prisma`** ignores `.env.local`. |
-| `DIRECT_URL`   | **`5432` direct URI** (`directUrl`). Required for **`db push`/migrate DDL** |
+| `DIRECT_URL`   | **`5432`** **Session pool** on **`*pooler.supabase.com`** (or **`db.<ref>`** if reachable). Prisma DDL/migrate — **≠** txn `:6543` |
 | `AUTH_SECRET`  | JWT signing · **required on Vercel prod** |
 | `NEXTAUTH_SECRET` | Optional alias for `AUTH_SECRET` (NextAuth v4 naming). |
 
@@ -43,7 +43,7 @@ Dev auth fallback: Auth.js uses a deterministic dev JWT secret whenever `NODE_EN
 
 ### 3) Push schema → database (once per empty database)
 
-**Requires `DIRECT_URL` (direct `:5432`)** — Ctrl+C anything stuck against `:6543` and add `.env.example` → `.env`.
+**Needs a different `directUrl`** than `:6543` txn — Ctrl+C stuck `db push` / fix **`P1001` on `db.*:5432`** by switching **`DIRECT_URL`** to **[Session `:5432` pool URI](https://supabase.com/docs/guides/database/prisma)** (same region as DATABASE_URL).
 
 From the repo root:
 
@@ -80,7 +80,7 @@ npm run db:studio # Prisma Studio
 
 ## Deploy (Vercel + Supabase)
 
-1. **Supabase:** Have both **`DATABASE_URL` (txn pool `:6543`)** and **`DIRECT_URL` (direct Postgres `:5432`)** documented in Supabase (**Settings → Database**).
+1. **Supabase:** **`DATABASE_URL` (txn `:6543`)** + **`DIRECT_URL` (Session `:5432` on `*.pooler.supabase.com`)** · [official Prisma pairing](https://supabase.com/docs/guides/database/prisma).
 
 2. **Vercel:** **Settings → Environment variables** · **`DATABASE_URL`**, **`DIRECT_URL`**, **`AUTH_SECRET`**, **`NEXTAUTH_URL`** (canonical site).
 
@@ -102,7 +102,8 @@ Learning Tracker vault patterns (canonical URLs, duplicate guard): [`docs/learni
 - **`MissingSecret`:** Define `AUTH_SECRET` (or `NEXTAUTH_SECRET`) in `.env`/`.env.local`, restart dev server.
 - **`Environment variable not found` (P1012 on `DATABASE_URL` / `DIRECT_URL`):** Copy [`.env.example`](.env.example) → `.env`; Prisma **`schema.prisma`** now expects **both** keys. Prefer **`npm run db:*`** so **`.env.local`** merges cleanly.
 - **`P1001` / `Can't reach database`:** Wrong password, typo in URI, firewall, or **`sslmode`** missing (`sslmode=require`).
-- **`npm run db:push` never finishes (`:6543` pool printed):** Add **`DIRECT_URL`** (**`5432`** `db.<ref>.supabase.co`) per [`.env.example`](.env.example). Cancel the stalled process (**Ctrl+C**), save `.env`, rerun **`npm run db:push`**. DDL must not use the txn pool ([Prisma ↔ PgBouncer](https://www.prisma.io/docs/orm/prisma-client/setup-and-configuration/databases-connections)).
+- **`P1001` on `db.<ref>.supabase.co:5432`:** Your network likely lacks IPv6 routing to Supabase **direct**. Set **`DIRECT_URL`** to the **Session** string (**`*.pooler.supabase.com`** + port **`5432`**, user **`postgres.<ref>`**) from **Dashboard → Connect → Prisma** ([docs](https://supabase.com/docs/guides/database/prisma)). Keep **`DATABASE_URL`** on **`:6543`** txn pool.
+- **`npm run db:push` never finishes (`6543`):** **`DIRECT_URL`** must **not** match txn **`6543`** — use session **`5432`** on the pool host (see [`.env.example`](.env.example)).
 - **`db:push` complains drift:** Run **`prisma migrate diff`**/`reset` only after understanding data loss implications.
 
 ## Security notes

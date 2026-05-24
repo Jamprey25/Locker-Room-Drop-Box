@@ -29,8 +29,8 @@ const wantsGenerateOnly =
 const GENERATE_SENTINEL =
   "postgresql://postgres:postgres@127.0.0.1:5432/prisma_placeholder?schema=public&sslmode=require";
 
-/** Supabase DDL (db push / migrate / introspection) hangs on Tx pool ; must use db.*.supabase.co:5432 */
-function prismaNeedsDirectTcpBypass(args) {
+/** Commands that exercise Prisma DDL / introspection plumbing (prefer non-txn URLs). */
+function prismaNeedsSeparateDirectUrl(args) {
   const cmd = args[0];
   const sub = args[1];
 
@@ -40,13 +40,9 @@ function prismaNeedsDirectTcpBypass(args) {
   return false;
 }
 
-function looksLikePgBouncerTxnPool(urlStr) {
-  if (!urlStr) return false;
-  return (
-    urlStr.includes(":6543") ||
-    /pooler\.supabase\.com/i.test(urlStr) ||
-    /pooler/i.test(urlStr)
-  ); // heuristic; pooled hosts almost always advertise pooler subdomain
+/** Supabase/Vercel txn pool `:6543` — Prisma DDL here often hangs; must not be used alone for migrate/db push. */
+function looksLikeTxnPool6543(urlStr) {
+  return Boolean(urlStr?.includes(":6543"));
 }
 
 if (!trimmedPool) {
@@ -65,42 +61,32 @@ if (!trimmedPool) {
     process.exit(1);
   }
 } else if (!trimmedDirect) {
-  /**
-   * For non-DDL CLI (format, studio, version) Prisma still parses directUrl —
-   * mirror pooled URL unless we need a real direct pipe for DDL.
-   */
-  if (!prismaNeedsDirectTcpBypass(prismaArgs)) {
+  if (!prismaNeedsSeparateDirectUrl(prismaArgs)) {
     process.env.DIRECT_URL = trimmedPool;
   }
 }
 
 trimmedDirect = process.env.DIRECT_URL?.trim();
 
-if (prismaNeedsDirectTcpBypass(prismaArgs)) {
+if (prismaNeedsSeparateDirectUrl(prismaArgs)) {
   if (!trimmedDirect) {
     console.error(
-      "[db] DIRECT_URL missing — Schema changes against Supabase’s **transaction pooler** (often :6543) often stall.",
+      "[db] DIRECT_URL missing — `db push`/migrate cannot use txn pool `:6543` alone.",
     );
     console.error(
-      "[db] Copy the **direct** Postgres URI from Supabase (host `db.<project-ref>.supabase.co`, port **5432**) into DIRECT_URL. Keep DATABASE_URL on the pooled 6543 string for runtime.",
+      "[db] Prefer Supabase **Session pool** (`*.pooler.supabase.com`, port **`5432`**, user `postgres.<ref>`). If your network has IPv6, `db.<ref>.supabase.co:5432` also works.",
     );
     process.exit(1);
   }
   if (
-    looksLikePgBouncerTxnPool(trimmedDirect) &&
+    looksLikeTxnPool6543(trimmedDirect) &&
     trimmedDirect === trimmedPool
   ) {
     console.error(
-      "[db] DIRECT_URL still points at a pooler `:6543` URL — prisma db push will hang.",
+      "[db] DIRECT_URL matches DATABASE_URL on port :6543 — prisma db push will hang on transaction pool DDL.",
     );
     console.error(
-      "[db] Set DIRECT_URL to the **direct** connection (port **5432**), DATABASE_URL stays on the pooler.",
-    );
-    process.exit(1);
-  }
-  if (looksLikePgBouncerTxnPool(trimmedDirect)) {
-    console.error(
-      "[db] DIRECT_URL looks like another pooler URI — DDL needs the **direct Postgres** `:5432` host (`db.<ref>.supabase.co`).",
+      "[db] Use **Session mode** on the same pool host with port **5432** for DIRECT_URL (Supabase Connect → Prisma).",
     );
     process.exit(1);
   }
