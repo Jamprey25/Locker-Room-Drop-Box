@@ -137,6 +137,75 @@ export async function addResource(payload: {
   }
 }
 
+const changePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(8, "Current password looks too short."),
+    newPassword: z.string().min(8, "Use at least 8 characters for your new password."),
+    confirmPassword: z
+      .string()
+      .min(8, "Confirm your new password."),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: "New password and confirmation do not match.",
+    path: ["confirmPassword"],
+  });
+
+export async function changePassword(formData: FormData): Promise<
+  { ok: true } | { ok: false; error: string }
+> {
+  const session = await auth();
+  const uid = session?.user?.id;
+  if (!uid) return { ok: false, error: "You need to log in." };
+
+  const parsed = changePasswordSchema.safeParse({
+    currentPassword: String(formData.get("currentPassword") ?? ""),
+    newPassword: String(formData.get("newPassword") ?? ""),
+    confirmPassword: String(formData.get("confirmPassword") ?? ""),
+  });
+
+  if (!parsed.success) {
+    const first = parsed.error.flatten().fieldErrors;
+    const msg =
+      first.currentPassword?.[0] ??
+      first.newPassword?.[0] ??
+      first.confirmPassword?.[0] ??
+      "Check your passwords and try again.";
+    return { ok: false, error: msg };
+  }
+
+  if (parsed.data.newPassword === parsed.data.currentPassword) {
+    return {
+      ok: false,
+      error: "New password must be different from your current password.",
+    };
+  }
+
+  try {
+    const user = await prisma.user.findUnique({ where: { id: uid } });
+    if (!user) return { ok: false, error: "Account not found." };
+
+    const matches = await bcrypt.compare(
+      parsed.data.currentPassword,
+      user.passwordHash
+    );
+    if (!matches) {
+      return { ok: false, error: "Current password is incorrect." };
+    }
+
+    const passwordHash = await bcrypt.hash(parsed.data.newPassword, 12);
+    await prisma.user.update({
+      where: { id: uid },
+      data: { passwordHash },
+    });
+
+    revalidatePath("/hub/profile");
+    return { ok: true };
+  } catch (e) {
+    console.error("[changePassword]", e);
+    return { ok: false, error: prismaToUserMessage(e) };
+  }
+}
+
 export async function toggleVideoWatched(payload: {
   videoId: string;
 }): Promise<{ ok: true; watched: boolean } | { ok: false; error: string }> {

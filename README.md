@@ -59,7 +59,7 @@ This creates **`users`**, **`videos`**, **`resources`**, **`video_watches`** in 
 npm run dev
 ```
 
-Landing: [/](http://localhost:3000) · Sign up [/signup](http://localhost:3000/signup) (aliases [/register](http://localhost:3000/register)) · Log in [/login](http://localhost:3000/login) · Locker [/hub](http://localhost:3000/hub).
+Landing: [/](http://localhost:3000) · Sign up [/signup](http://localhost:3000/signup) (aliases [/register](http://localhost:3000/register)) · Log in [/login](http://localhost:3000/login) · Locker [/hub](http://localhost:3000/hub) · Profile (change password) [/hub/profile](http://localhost:3000/hub/profile).
 
 ## Migrating existing **SQLite** data (optional)
 

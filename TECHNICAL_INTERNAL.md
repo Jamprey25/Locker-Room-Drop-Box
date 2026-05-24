@@ -6,7 +6,7 @@ _Last updated: 2026-05-24_
 
 Traffic flows Next.js middleware → guarded `/hub/**` routes → React server components hydrate Prisma payloads → Tailwind-rendered lockers. Credentials hit NextAuth’s authorize hook, bcrypt compares `password_hash`, JWT stores `sub = user.id`, middleware blocks anonymous `/hub`.
 
-**Presentation shell:** [`src/app/hub/layout.tsx`](src/app/hub/layout.tsx) renders [`HubNav`](src/components/hub/hub-nav.tsx) plus `max-w-6xl` main content; if JWT decode yields no usable `user` (id + email), guests see a glass-styled reconnect card linking to `/login` instead of the hub. **`src/app/hub/loading.tsx`** provides route-level skeleton placeholders; **`src/app/not-found.tsx`** is the App Router global 404 with matching sky/indigo accents. Tokens align with **`src/app/globals.css`** (`@theme inline` Geist stacks, dark `color-scheme`, focus-visible ring).
+**Presentation shell:** [`src/app/hub/layout.tsx`](src/app/hub/layout.tsx) renders [`HubNav`](src/components/hub/hub-nav.tsx) (home + **Profile → `/hub/profile`** for password updates) plus `max-w-6xl` main content; if JWT decode yields no usable `user` (id + email), guests see a glass-styled reconnect card linking to `/login` instead of the hub. **`src/app/hub/loading.tsx`** provides route-level skeleton placeholders; **`src/app/not-found.tsx`** is the App Router global 404 with matching sky/indigo accents. Tokens align with **`src/app/globals.css`** (`@theme inline` Geist stacks, dark `color-scheme`, focus-visible ring).
 
 **Persistence:** Prisma datasource is **`postgresql`**: **`DATABASE_URL`** is Supabase **transaction pool `:6543` + `pgbouncer=true`**. **`DIRECT_URL`** (**`directUrl`**) feeds Prisma DDL; standard practice is **`…pooler.supabase.com:5432`** (**Session**/Supavisor) per [Supabase’s Prisma guide](https://supabase.com/docs/guides/database/prisma) because **`db.<ref>.supabase.co:5432`** is often unreachable from IPv4 networks (**P1001**). Duplicate **`:6543`** URLs deadlock DDL on PgBouncer transaction mode.
 
@@ -20,7 +20,7 @@ YouTube ingestion keeps the invariant from Learning Tracker: every saved clip ma
 
 | Concern               | Persistence                         | Mutation surface                          |
 |-----------------------|--------------------------------------|--------------------------------------------|
-| Auth session          | NextAuth JWT (no server session tbl) | `signIn`, `signOut`, middleware guard      |
+| Auth session          | NextAuth JWT (no server session tbl) | `signIn`, `signOut`, middleware guard · `changePassword` updates `password_hash` in place |
 | Videos / Resources    | Postgres via Prisma / Supabase      | `/src/app/actions/hub.ts` server actions    |
 | Per-user watched flag | `video_watches` (`@@unique [userId, videoId]`) | `toggleVideoWatched` + optimistic Hub UI |
 
@@ -32,6 +32,7 @@ Schema sync ships as **`npm run db:push`**. Checked-in migrations were intention
 2. **YouTube ingest** (`ingestYoutubeVideo`) extracts ID (`src/lib/youtube.ts`), rejects invalid strings, resolves duplicates early, grabs oEmbed (fallback title + CDN thumbnail), persists `videos.added_by_id`.
 3. **Resource ingest** validates URL (`z.string().url()`), optional title/note trimming, persists `resources`.
 4. **Watch roster** renders `videos.watches` sorted ascending by timestamp; duplicates blocked by uniqueness constraint — React keys reuse watcher `user.id`.
+5. **Change password** (`/hub/profile`) — [`changePassword`](src/app/actions/hub.ts) requires an authenticated session (`auth()` → `sub`), validates current + new password + confirmation (Zod, min 8), rejects reuse of the current password as the new secret, bcrypt-compares existing `password_hash`, re-hashes new password at cost **12**, `prisma.user.update`, `revalidatePath("/hub/profile")`. JWT credentials sessions stay valid until expiry; subsequent logins use the updated hash via `authorize`.
 
 ## Dependencies
 
@@ -41,7 +42,7 @@ Schema sync ships as **`npm run db:push`**. Checked-in migrations were intention
 | `next-auth`    | Credentials JWT sessions without relational session rows |
 | `prisma`       | Typed relational access + FK/cascade deletes + dedupe uniqueness |
 | `bcryptjs`     | Stable password hashing in pure JS |
-| `zod`          | Signup / ingest boundaries |
+| `zod`          | Signup / ingest / password-change boundaries |
 | `tailwindcss`  | Utility styling |
 
 ### Pedagogical note

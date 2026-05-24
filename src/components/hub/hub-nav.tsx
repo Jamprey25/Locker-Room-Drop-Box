@@ -21,6 +21,14 @@ export function HubNav({
           </span>
           Locker Room
         </Link>
+        <nav className="flex flex-wrap items-center gap-2 text-sm font-medium">
+          <Link
+            href="/hub/profile"
+            className="rounded-full px-3 py-1.5 text-slate-400 transition hover:bg-white/[0.06] hover:text-white"
+          >
+            Profile
+          </Link>
+        </nav>
         <div className="flex flex-wrap items-center gap-3">
           <div className="hidden items-center gap-2 sm:flex">
             <span className="h-8 w-8 rounded-full bg-gradient-to-br from-slate-600 to-slate-800 ring-2 ring-white/10" />
