@@ -8,6 +8,9 @@ import {
   addYoutubeVideo,
   toggleVideoWatched,
 } from "@/app/actions/hub";
+import type { WatchlistSectorGroup } from "@/data/watchlist";
+import type { StockQuote } from "@/lib/alpha-vantage";
+import { WatchlistTab } from "@/components/hub/watchlist-tab";
 
 export type HubVideoRow = {
   id: string;
@@ -51,9 +54,14 @@ export function HubClient(props: {
   initialVideos: HubVideoRow[];
   initialResources: HubResourceRow[];
   watchedVideoIds: string[];
+  watchlistGroups: WatchlistSectorGroup[];
+  watchlistQuotes: Record<string, StockQuote>;
+  watchlistApiConfigured: boolean;
 }) {
   const router = useRouter();
-  const [tab, setTab] = useState<"videos" | "resources">("videos");
+  const [tab, setTab] = useState<"videos" | "resources" | "watchlist">(
+    "videos"
+  );
   const [videoUrl, setVideoUrl] = useState("");
   const [resourceFields, setResourceFields] = useState({
     url: "",
@@ -173,35 +181,30 @@ export function HubClient(props: {
           </p>
         </div>
 
-        <div className="flex shrink-0 rounded-full border border-white/[0.08] bg-black/25 p-1 backdrop-blur-md">
-          <button
-            type="button"
-            onClick={() => setTab("videos")}
-            className={`relative rounded-full px-6 py-2.5 text-sm font-semibold transition ${
-              tab === "videos"
-                ? "text-white shadow-md shadow-black/40"
-                : "text-slate-500 hover:text-slate-200"
-            }`}
-          >
-            {tab === "videos" ? (
-              <span className="absolute inset-0 rounded-full bg-gradient-to-r from-sky-500 to-indigo-600 opacity-[0.95]" />
-            ) : null}
-            <span className="relative z-[1]">Videos</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setTab("resources")}
-            className={`relative rounded-full px-6 py-2.5 text-sm font-semibold transition ${
-              tab === "resources"
-                ? "text-white shadow-md shadow-black/40"
-                : "text-slate-500 hover:text-slate-200"
-            }`}
-          >
-            {tab === "resources" ? (
-              <span className="absolute inset-0 rounded-full bg-gradient-to-r from-sky-500 to-indigo-600 opacity-[0.95]" />
-            ) : null}
-            <span className="relative z-[1]">Resources</span>
-          </button>
+        <div className="flex shrink-0 flex-wrap rounded-full border border-white/[0.08] bg-black/25 p-1 backdrop-blur-md">
+          {(
+            [
+              ["videos", "Videos"],
+              ["resources", "Resources"],
+              ["watchlist", "Watchlist"],
+            ] as const
+          ).map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setTab(id)}
+              className={`relative rounded-full px-5 py-2.5 text-sm font-semibold transition sm:px-6 ${
+                tab === id
+                  ? "text-white shadow-md shadow-black/40"
+                  : "text-slate-500 hover:text-slate-200"
+              }`}
+            >
+              {tab === id ? (
+                <span className="absolute inset-0 rounded-full bg-gradient-to-r from-sky-500 to-indigo-600 opacity-[0.95]" />
+              ) : null}
+              <span className="relative z-[1]">{label}</span>
+            </button>
+          ))}
         </div>
       </div>
 
@@ -217,7 +220,13 @@ export function HubClient(props: {
         </p>
       ) : null}
 
-      {tab === "videos" ? (
+      {tab === "watchlist" ? (
+        <WatchlistTab
+          groups={props.watchlistGroups}
+          initialQuotes={props.watchlistQuotes}
+          apiConfigured={props.watchlistApiConfigured}
+        />
+      ) : tab === "videos" ? (
         <section className="flex flex-col gap-8">
           <form
             className={glassPanel}

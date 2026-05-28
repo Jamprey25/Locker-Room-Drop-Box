@@ -1,6 +1,8 @@
 export const dynamic = "force-dynamic";
 
 import { auth } from "@/auth";
+import { groupWatchlistBySector } from "@/data/watchlist";
+import { isAlphaVantageConfigured } from "@/lib/alpha-vantage";
 import { prisma } from "@/lib/prisma";
 import { HubClient } from "@/components/hub/hub-client";
 
@@ -47,6 +49,9 @@ export default async function HubPage() {
       initialVideos={videos}
       initialResources={resources}
       watchedVideoIds={Array.from(watchedVideoIds)}
+      watchlistGroups={groupWatchlistBySector()}
+      watchlistQuotes={{}}
+      watchlistApiConfigured={isAlphaVantageConfigured()}
     />
   );
 }
