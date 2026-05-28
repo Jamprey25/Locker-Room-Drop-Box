@@ -1,15 +1,30 @@
 export const dynamic = "force-dynamic";
 
 import { auth } from "@/auth";
-import { groupWatchlistBySector } from "@/data/watchlist";
 import { isAlphaVantageConfigured } from "@/lib/alpha-vantage";
 import { prisma } from "@/lib/prisma";
+import { prismaToUserMessage } from "@/lib/prisma-user-message";
+import {
+  ensureWatchlistSeeded,
+  loadWatchlistGroups,
+} from "@/lib/watchlist-db";
+import type { WatchlistSectorGroup } from "@/data/watchlist";
 import { HubClient } from "@/components/hub/hub-client";
 
 export default async function HubPage() {
   const session = await auth();
   const uid = session?.user?.id;
   if (!uid) return null;
+
+  let watchlistGroups: WatchlistSectorGroup[] = [];
+  let watchlistSetupError: string | null = null;
+
+  try {
+    await ensureWatchlistSeeded(uid);
+    watchlistGroups = await loadWatchlistGroups();
+  } catch (e) {
+    watchlistSetupError = prismaToUserMessage(e);
+  }
 
   const [videos, resources] = await Promise.all([
     prisma.video.findMany({
@@ -49,9 +64,10 @@ export default async function HubPage() {
       initialVideos={videos}
       initialResources={resources}
       watchedVideoIds={Array.from(watchedVideoIds)}
-      watchlistGroups={groupWatchlistBySector()}
+      watchlistGroups={watchlistGroups}
       watchlistQuotes={{}}
       watchlistApiConfigured={isAlphaVantageConfigured()}
+      watchlistSetupError={watchlistSetupError}
     />
   );
 }

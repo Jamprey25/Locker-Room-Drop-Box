@@ -1,4 +1,5 @@
 export type WatchlistEntry = {
+  id?: string;
   companyName: string;
   ticker: string;
   sector: string;
@@ -150,8 +151,12 @@ export function groupWatchlistBySector(
     }));
 }
 
-export function watchlistTickers(
-  entries: WatchlistEntry[] = WATCHLIST_ENTRIES
-): string[] {
+export function watchlistTickers(entries: WatchlistEntry[]): string[] {
   return [...new Set(entries.map((e) => e.ticker.toUpperCase()))].sort();
+}
+
+export function flattenWatchlistEntries(
+  groups: WatchlistSectorGroup[]
+): WatchlistEntry[] {
+  return groups.flatMap((group) => group.entries);
 }

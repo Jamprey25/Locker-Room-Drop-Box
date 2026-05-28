@@ -72,6 +72,18 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     async session({ session, token }) {
       if (session.user && token.sub) {
         session.user.id = token.sub;
+        try {
+          const user = await prisma.user.findUnique({
+            where: { id: token.sub },
+            select: { name: true, email: true },
+          });
+          if (user) {
+            session.user.name = user.name ?? "";
+            session.user.email = user.email;
+          }
+        } catch (e) {
+          console.error("[auth] Failed to load user for session:", e);
+        }
       }
       return session;
     },

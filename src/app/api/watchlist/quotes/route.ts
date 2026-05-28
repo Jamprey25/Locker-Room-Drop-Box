@@ -5,7 +5,7 @@ import {
   getCachedStockQuotes,
   isAlphaVantageConfigured,
 } from "@/lib/alpha-vantage";
-import { watchlistTickers } from "@/data/watchlist";
+import { loadWatchlistTickers } from "@/lib/watchlist-db";
 
 export const dynamic = "force-dynamic";
 
@@ -41,8 +41,10 @@ export async function GET(request: Request) {
     });
   }
 
+  const tickers = await loadWatchlistTickers();
+
   return NextResponse.json({
-    quotes: getCachedStockQuotes(watchlistTickers()),
+    quotes: getCachedStockQuotes(tickers),
     apiConfigured,
     refreshedAt: new Date().toISOString(),
   });

@@ -28,18 +28,24 @@ function LoginInner() {
       action={(fd) =>
         startTransition(async () => {
           setError(null);
-          const res = await signIn("credentials", {
-            redirect: false,
-            email: String(fd.get("email")),
-            password: String(fd.get("password")),
-            callbackUrl,
-          });
-          if (res?.error) {
-            setError("Email or password did not match.");
-            return;
+          try {
+            const res = await signIn("credentials", {
+              redirect: false,
+              email: String(fd.get("email")),
+              password: String(fd.get("password")),
+              callbackUrl,
+            });
+            if (res?.error) {
+              setError("Email or password did not match.");
+              return;
+            }
+            router.push(callbackUrl);
+            router.refresh();
+          } catch {
+            setError(
+              "Sign-in service returned an unexpected response. Stop the dev server, run `rm -rf .next`, then `npm run dev` again. If this is production, confirm AUTH_SECRET is set in your host env."
+            );
           }
-          router.push(callbackUrl);
-          router.refresh();
         })
       }
     >

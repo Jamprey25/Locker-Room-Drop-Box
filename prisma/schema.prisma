@@ -16,9 +16,10 @@ model User {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
-  videosAdded    Video[]      @relation("VideoAddedBy")
-  resourcesAdded Resource[]   @relation("ResourceAddedBy")
+  videosAdded    Video[]          @relation("VideoAddedBy")
+  resourcesAdded Resource[]       @relation("ResourceAddedBy")
   videoWatches   VideoWatch[]
+  watchlistAdded WatchlistItem[]  @relation("WatchlistAddedBy")
 
   @@map("users")
 }
@@ -62,4 +63,23 @@ model VideoWatch {
   @@unique([userId, videoId])
   @@index([videoId])
   @@map("video_watches")
+}
+
+model WatchlistItem {
+  id          String   @id @default(cuid())
+  ticker      String   @unique
+  companyName String   @map("company_name")
+  sector      String
+  type        String
+  thesis      String   @default("")
+  status      String   @default("Neutral")
+  priority    String   @default("Neutral")
+  notes       String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  addedById   String   @map("added_by_id")
+  addedBy     User     @relation("WatchlistAddedBy", fields: [addedById], references: [id], onDelete: Cascade)
+
+  @@index([sector])
+  @@index([addedById])
+  @@map("watchlist_items")
 }

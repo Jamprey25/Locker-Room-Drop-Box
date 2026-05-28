@@ -150,6 +150,28 @@ const changePasswordSchema = z
     path: ["confirmPassword"],
   });
 
+const changeDisplayNameSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(1, "Enter a display name.")
+    .max(80, "Use 80 characters or fewer."),
+});
+
+const watchlistItemSchema = z.object({
+  companyName: z.string().trim().min(1, "Enter a company name.").max(200),
+  ticker: z
+    .string()
+    .trim()
+    .min(1, "Enter a ticker symbol.")
+    .max(12)
+    .regex(/^[A-Za-z0-9.-]+$/, "Ticker can only contain letters, numbers, dots, or dashes."),
+  sector: z.string().trim().min(1, "Enter a sector or theme.").max(120),
+  type: z.enum(["Stock", "ETF"]),
+  thesis: z.string().trim().max(2000).optional(),
+  notes: z.string().trim().max(2000).optional(),
+});
+
 export async function changePassword(formData: FormData): Promise<
   { ok: true } | { ok: false; error: string }
 > {
@@ -199,9 +221,119 @@ export async function changePassword(formData: FormData): Promise<
     });
 
     revalidatePath("/hub/profile");
+    revalidatePath("/hub");
     return { ok: true };
   } catch (e) {
     console.error("[changePassword]", e);
+    return { ok: false, error: prismaToUserMessage(e) };
+  }
+}
+
+export async function changeDisplayName(formData: FormData): Promise<
+  { ok: true; name: string } | { ok: false; error: string }
+> {
+  const session = await auth();
+  const uid = session?.user?.id;
+  if (!uid) return { ok: false, error: "You need to log in." };
+
+  const parsed = changeDisplayNameSchema.safeParse({
+    name: String(formData.get("name") ?? ""),
+  });
+
+  if (!parsed.success) {
+    const msg = parsed.error.flatten().fieldErrors.name?.[0];
+    return { ok: false, error: msg ?? "Check your display name and try again." };
+  }
+
+  try {
+    const user = await prisma.user.update({
+      where: { id: uid },
+      data: { name: parsed.data.name },
+      select: { name: true },
+    });
+
+    revalidatePath("/hub/profile");
+    revalidatePath("/hub");
+    return { ok: true, name: user.name ?? parsed.data.name };
+  } catch (e) {
+    console.error("[changeDisplayName]", e);
+    return { ok: false, error: prismaToUserMessage(e) };
+  }
+}
+
+export async function addWatchlistItem(payload: {
+  companyName: string;
+  ticker: string;
+  sector: string;
+  type: "Stock" | "ETF";
+  thesis?: string;
+  notes?: string;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  const session = await auth();
+  const uid = session?.user?.id;
+  if (!uid) return { ok: false, error: "You need to log in." };
+
+  const parsed = watchlistItemSchema.safeParse(payload);
+  if (!parsed.success) {
+    const first = parsed.error.flatten().fieldErrors;
+    const msg =
+      first.companyName?.[0] ??
+      first.ticker?.[0] ??
+      first.sector?.[0] ??
+      first.type?.[0] ??
+      "Check the watchlist fields and try again.";
+    return { ok: false, error: msg };
+  }
+
+  const ticker = parsed.data.ticker.toUpperCase();
+
+  try {
+    const existing = await prisma.watchlistItem.findUnique({
+      where: { ticker },
+    });
+    if (existing) {
+      return { ok: false, error: `${ticker} is already on the watchlist.` };
+    }
+
+    await prisma.watchlistItem.create({
+      data: {
+        ticker,
+        companyName: parsed.data.companyName,
+        sector: parsed.data.sector,
+        type: parsed.data.type,
+        thesis: parsed.data.thesis ?? "",
+        notes: parsed.data.notes ?? null,
+        addedById: uid,
+      },
+    });
+
+    revalidatePath("/hub");
+    return { ok: true };
+  } catch (e) {
+    console.error("[addWatchlistItem]", e);
+    return { ok: false, error: prismaToUserMessage(e) };
+  }
+}
+
+export async function deleteWatchlistItem(payload: {
+  id: string;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  const session = await auth();
+  const uid = session?.user?.id;
+  if (!uid) return { ok: false, error: "You need to log in." };
+
+  const id = payload.id?.trim();
+  if (!id) return { ok: false, error: "Missing watchlist item." };
+
+  try {
+    const item = await prisma.watchlistItem.findUnique({ where: { id } });
+    if (!item) return { ok: false, error: "That watchlist item was not found." };
+
+    await prisma.watchlistItem.delete({ where: { id } });
+    revalidatePath("/hub");
+    return { ok: true };
+  } catch (e) {
+    console.error("[deleteWatchlistItem]", e);
     return { ok: false, error: prismaToUserMessage(e) };
   }
 }

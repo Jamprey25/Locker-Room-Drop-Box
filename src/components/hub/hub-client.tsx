@@ -57,6 +57,7 @@ export function HubClient(props: {
   watchlistGroups: WatchlistSectorGroup[];
   watchlistQuotes: Record<string, StockQuote>;
   watchlistApiConfigured: boolean;
+  watchlistSetupError?: string | null;
 }) {
   const router = useRouter();
   const [tab, setTab] = useState<"videos" | "resources" | "watchlist">(
@@ -225,6 +226,7 @@ export function HubClient(props: {
           groups={props.watchlistGroups}
           initialQuotes={props.watchlistQuotes}
           apiConfigured={props.watchlistApiConfigured}
+          setupError={props.watchlistSetupError}
         />
       ) : tab === "videos" ? (
         <section className="flex flex-col gap-8">
