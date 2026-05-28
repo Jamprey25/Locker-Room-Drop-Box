@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { fetchStockQuotes } from "@/lib/alpha-vantage";
+import {
+  fetchStockQuote,
+  getCachedStockQuotes,
+  isAlphaVantageConfigured,
+} from "@/lib/alpha-vantage";
 import { watchlistTickers } from "@/data/watchlist";
 
 export const dynamic = "force-dynamic";
@@ -12,14 +16,33 @@ export async function GET(request: Request) {
   }
 
   const { searchParams } = new URL(request.url);
+  const symbol = searchParams.get("symbol")?.trim().toUpperCase();
   const refresh = searchParams.get("refresh") === "1";
+  const apiConfigured = isAlphaVantageConfigured();
 
-  const { quotes, apiConfigured } = await fetchStockQuotes(watchlistTickers(), {
-    refresh,
-  });
+  if (symbol) {
+    const result = await fetchStockQuote(symbol, { refresh });
+    if (!result.ok) {
+      return NextResponse.json({
+        symbol,
+        quote: null,
+        apiConfigured,
+        error: result.error,
+        rateLimited: result.rateLimited,
+      });
+    }
+
+    return NextResponse.json({
+      symbol,
+      quote: result.quote,
+      apiConfigured,
+      fromCache: result.fromCache,
+      refreshedAt: new Date().toISOString(),
+    });
+  }
 
   return NextResponse.json({
-    quotes,
+    quotes: getCachedStockQuotes(watchlistTickers()),
     apiConfigured,
     refreshedAt: new Date().toISOString(),
   });

@@ -1,11 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import type { WatchlistSectorGroup } from "@/data/watchlist";
 import type { StockQuote } from "@/lib/alpha-vantage";
+import { watchlistTickers } from "@/data/watchlist";
 
 const glassPanel =
   "rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6 shadow-xl shadow-black/30 backdrop-blur-xl sm:p-7";
+
+const REQUEST_GAP_MS = 1_200;
 
 function formatUsd(value: number) {
   return new Intl.NumberFormat("en-US", {
@@ -22,50 +25,131 @@ function changeTone(change: number) {
   return "text-slate-400";
 }
 
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export function WatchlistTab(props: {
   groups: WatchlistSectorGroup[];
   initialQuotes: Record<string, StockQuote>;
   apiConfigured: boolean;
 }) {
+  const tickers = watchlistTickers();
   const [quotes, setQuotes] = useState(props.initialQuotes);
   const [apiConfigured, setApiConfigured] = useState(props.apiConfigured);
   const [quoteError, setQuoteError] = useState<string | null>(null);
+  const [loadingPrices, setLoadingPrices] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  const fetchRunRef = useRef(0);
 
-  const loadQuotes = useCallback((refresh = false) => {
-    start(async () => {
+  const fetchOneQuote = useCallback(
+    async (
+      symbol: string,
+      refresh: boolean
+    ): Promise<{ shouldContinue: boolean; quote: StockQuote | null }> => {
+      const res = await fetch(
+        `/api/watchlist/quotes?symbol=${encodeURIComponent(symbol)}${refresh ? "&refresh=1" : ""}`,
+        { cache: "no-store" }
+      );
+
+      if (!res.ok) {
+        return { shouldContinue: false, quote: null };
+      }
+
+      const data = (await res.json()) as {
+        quote: StockQuote | null;
+        apiConfigured: boolean;
+        error?: string;
+        rateLimited?: boolean;
+        refreshedAt?: string;
+      };
+
+      setApiConfigured(Boolean(data.apiConfigured));
+
+      if (data.quote) {
+        setQuotes((prev) => ({
+          ...prev,
+          [data.quote!.symbol.toUpperCase()]: data.quote!,
+        }));
+        setLastUpdated(data.refreshedAt ?? new Date().toISOString());
+        return { shouldContinue: true, quote: data.quote };
+      }
+
+      if (data.error) {
+        setQuoteError(data.error);
+      }
+
+      return { shouldContinue: !data.rateLimited, quote: null };
+    },
+    []
+  );
+
+  const loadQuotes = useCallback(
+    async (refresh = false) => {
+      const runId = ++fetchRunRef.current;
       setQuoteError(null);
+      setLoadingPrices(true);
+
+      let mergedQuotes: Record<string, StockQuote> = {};
+
       try {
-        const res = await fetch(
-          `/api/watchlist/quotes${refresh ? "?refresh=1" : ""}`,
-          { cache: "no-store" }
-        );
-        if (!res.ok) {
-          setQuoteError("Could not load live prices.");
+        const cacheRes = await fetch("/api/watchlist/quotes", {
+          cache: "no-store",
+        });
+        if (cacheRes.ok) {
+          const cacheData = (await cacheRes.json()) as {
+            quotes: Record<string, StockQuote>;
+            apiConfigured: boolean;
+            refreshedAt?: string;
+          };
+          mergedQuotes = { ...(cacheData.quotes ?? {}) };
+          setQuotes((prev) => ({ ...prev, ...mergedQuotes }));
+          setApiConfigured(Boolean(cacheData.apiConfigured));
+          if (Object.keys(mergedQuotes).length > 0) {
+            setLastUpdated(cacheData.refreshedAt ?? new Date().toISOString());
+          }
+        }
+
+        if (!props.apiConfigured && Object.keys(mergedQuotes).length === 0) {
           return;
         }
-        const data = (await res.json()) as {
-          quotes: Record<string, StockQuote>;
-          apiConfigured: boolean;
-          refreshedAt?: string;
-        };
-        setQuotes(data.quotes ?? {});
-        setApiConfigured(Boolean(data.apiConfigured));
-        setLastUpdated(data.refreshedAt ?? new Date().toISOString());
+
+        for (let i = 0; i < tickers.length; i++) {
+          if (fetchRunRef.current !== runId) return;
+
+          const symbol = tickers[i];
+          if (!refresh && mergedQuotes[symbol]) continue;
+
+          const { shouldContinue, quote } = await fetchOneQuote(symbol, refresh);
+          if (quote) mergedQuotes[quote.symbol] = quote;
+          if (!shouldContinue) break;
+
+          if (i < tickers.length - 1) {
+            await sleep(REQUEST_GAP_MS);
+          }
+        }
       } catch {
         setQuoteError("Network error while fetching prices.");
+      } finally {
+        if (fetchRunRef.current === runId) {
+          setLoadingPrices(false);
+        }
       }
-    });
-  }, []);
+    },
+    [fetchOneQuote, props.apiConfigured, tickers]
+  );
 
   useEffect(() => {
-    if (Object.keys(props.initialQuotes).length === 0 && props.apiConfigured) {
-      loadQuotes(false);
+    if (props.apiConfigured) {
+      void loadQuotes(false);
     }
-  }, [props.initialQuotes, props.apiConfigured, loadQuotes]);
+    // Load cached + missing quotes once when the tab mounts.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.apiConfigured]);
 
   const totalEntries = props.groups.reduce((n, g) => n + g.entries.length, 0);
+  const loadedCount = tickers.filter((t) => quotes[t]).length;
 
   return (
     <section className="flex flex-col gap-8">
@@ -83,11 +167,11 @@ export function WatchlistTab(props: {
           </div>
           <button
             type="button"
-            onClick={() => loadQuotes(true)}
-            disabled={pending || !apiConfigured}
+            onClick={() => start(() => void loadQuotes(true))}
+            disabled={pending || loadingPrices || !apiConfigured}
             className="shrink-0 rounded-full border border-white/15 bg-white/[0.04] px-5 py-2.5 text-sm font-semibold text-white transition hover:border-sky-500/40 hover:bg-sky-500/10 disabled:opacity-50"
           >
-            {pending ? "Updating…" : "Refresh prices"}
+            {pending || loadingPrices ? "Updating…" : "Refresh prices"}
           </button>
         </div>
 
@@ -96,6 +180,13 @@ export function WatchlistTab(props: {
             Add <code className="font-mono text-amber-50">ALPHA_VANTAGE_API_KEY</code>{" "}
             to your environment to enable live quotes. Tickers and sectors still
             show below.
+          </p>
+        ) : null}
+
+        {loadingPrices && apiConfigured ? (
+          <p className="mt-4 text-sm text-slate-400">
+            Loading prices… {loadedCount}/{tickers.length} loaded (Alpha Vantage
+            free tier allows 1 request per second).
           </p>
         ) : null}
 
@@ -109,7 +200,7 @@ export function WatchlistTab(props: {
           <p className="mt-4 text-xs text-slate-500">
             Prices updated {formatRelativeTime(lastUpdated)}
             {apiConfigured
-              ? " · Free Alpha Vantage tier limits how many symbols refresh per minute"
+              ? ` · ${loadedCount}/${tickers.length} symbols loaded`
               : null}
           </p>
         ) : null}
@@ -170,7 +261,11 @@ export function WatchlistTab(props: {
                           </>
                         ) : (
                           <span className="text-sm text-slate-500">
-                            {apiConfigured ? "Price pending" : "No API key"}
+                            {!apiConfigured
+                              ? "No API key"
+                              : loadingPrices
+                                ? "Loading…"
+                                : "Unavailable"}
                           </span>
                         )}
                       </div>
