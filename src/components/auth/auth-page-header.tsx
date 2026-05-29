@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { LogoBadge } from "@/components/ui/avatar";
+import { cn } from "@/lib/cn";
 
 export function AuthPageHeader({
   subtitle,
@@ -20,9 +22,7 @@ export function AuthPageHeader({
         href="/"
         className="group flex items-center gap-2 text-[15px] font-semibold tracking-tight text-white"
       >
-        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-sky-500 to-indigo-600 text-[11px] font-bold text-white shadow-md shadow-sky-900/40">
-          LR
-        </span>
+        <LogoBadge />
         <span className="text-slate-200 transition group-hover:text-white">
           Locker Room Dropbox
         </span>
@@ -31,22 +31,24 @@ export function AuthPageHeader({
         <Link
           href="/login"
           aria-current={highlight.login ? "page" : undefined}
-          className={
+          className={cn(
+            "rounded-full px-4 py-2 transition",
             highlight.login
-              ? "rounded-full bg-white/[0.12] px-4 py-2 font-semibold text-white shadow-inner"
-              : "rounded-full px-4 py-2 text-slate-400 transition hover:text-white"
-          }
+              ? "bg-white/[0.12] font-semibold text-white shadow-inner"
+              : "text-slate-400 hover:text-white"
+          )}
         >
           Log in
         </Link>
         <Link
           href="/signup"
           aria-current={highlight.signup ? "page" : undefined}
-          className={
+          className={cn(
+            "rounded-full px-4 py-2 transition",
             highlight.signup
-              ? "rounded-full bg-white/[0.12] px-4 py-2 font-semibold text-white shadow-inner"
-              : "rounded-full px-4 py-2 text-slate-400 transition hover:text-white"
-          }
+              ? "bg-white/[0.12] font-semibold text-white shadow-inner"
+              : "text-slate-400 hover:text-white"
+          )}
         >
           Sign up
         </Link>

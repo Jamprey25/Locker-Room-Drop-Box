@@ -1,15 +1,19 @@
 "use client";
 
 import { signOut } from "next-auth/react";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/cn";
 
-export function SignOutButton() {
+export function SignOutButton({ className }: { className?: string }) {
   return (
-    <button
+    <Button
       type="button"
+      variant="ghost"
+      size="sm"
       onClick={() => signOut({ callbackUrl: "/" })}
-      className="rounded-full border border-white/10 px-4 py-2 text-xs font-medium text-slate-300 transition hover:border-white/20 hover:bg-white/[0.05] hover:text-white active:scale-[0.98]"
+      className={cn(className)}
     >
       Sign out
-    </button>
+    </Button>
   );
 }

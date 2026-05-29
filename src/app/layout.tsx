@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AppSessionProvider } from "@/components/providers/app-session-provider";
+import { ToastProvider } from "@/components/ui/toast";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,7 +32,7 @@ export default function RootLayout({
       >
         <div
           aria-hidden
-          className="pointer-events-none fixed inset-0 -z-20 bg-[#050508]"
+          className="pointer-events-none fixed inset-0 -z-20 bg-bg-base"
         />
         <div
           aria-hidden
@@ -42,7 +43,9 @@ export default function RootLayout({
           className="pointer-events-none fixed inset-0 -z-20 bg-[radial-gradient(ellipse_70%_50%_at_100%_50%,rgb(99_102_241_/0.06),transparent)]"
         />
 
-        <AppSessionProvider>{children}</AppSessionProvider>
+        <AppSessionProvider>
+          <ToastProvider>{children}</ToastProvider>
+        </AppSessionProvider>
       </body>
     </html>
   );

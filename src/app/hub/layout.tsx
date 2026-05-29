@@ -1,8 +1,9 @@
 import type { ReactNode } from "react";
 import type { Metadata } from "next";
-import Link from "next/link";
 import { auth } from "@/auth";
 import { HubNav } from "@/components/hub/hub-nav";
+import { ButtonLink } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 
 export const metadata: Metadata = {
   title: "Hub · Locker Room Dropbox",
@@ -27,20 +28,19 @@ export default async function HubLayout({
 
   if (!user) {
     return (
-      <div className="flex min-h-dvh flex-col items-center justify-center gap-6 px-6 py-16 text-center">
-        <div className="max-w-sm rounded-3xl border border-white/[0.08] bg-white/[0.03] p-8 shadow-2xl shadow-black/40 backdrop-blur-xl">
-          <p className="text-sm leading-relaxed text-slate-300">
-            Your session ended or is unavailable. Sign in again to open the
-            locker.
-          </p>
-          <Link
-            href="/login"
-            className="mt-6 inline-flex w-full items-center justify-center rounded-full bg-gradient-to-r from-sky-500 to-indigo-600 py-3 text-sm font-semibold text-white shadow-lg shadow-sky-950/40 transition hover:brightness-110"
-          >
-            Return to login
-          </Link>
-        </div>
-      </div>
+      <main className="flex min-h-dvh flex-col items-center justify-center gap-6 px-6 py-16 text-center">
+        <Card className="max-w-sm">
+          <CardContent>
+            <p className="text-sm leading-relaxed text-slate-300">
+              Your session ended or is unavailable. Sign in again to open the
+              locker.
+            </p>
+            <ButtonLink href="/login" className="mt-6 w-full">
+              Return to login
+            </ButtonLink>
+          </CardContent>
+        </Card>
+      </main>
     );
   }
 
