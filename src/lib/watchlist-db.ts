@@ -1,5 +1,6 @@
 import {
   groupWatchlistBySector,
+  parseWatchlistType,
   WATCHLIST_ENTRIES,
   type WatchlistEntry,
   type WatchlistSectorGroup,
@@ -22,7 +23,7 @@ function rowToEntry(row: {
     companyName: row.companyName,
     ticker: row.ticker,
     sector: row.sector,
-    type: row.type === "ETF" ? "ETF" : "Stock",
+    type: parseWatchlistType(row.type),
     thesis: row.thesis,
     status: row.status,
     priority: row.priority,

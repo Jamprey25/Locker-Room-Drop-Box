@@ -8,6 +8,7 @@ import { auth, signIn } from "@/auth";
 import { CredentialsSignin } from "next-auth";
 import { ingestYoutubeVideo } from "@/lib/youtube-ingest";
 import { prismaToUserMessage } from "@/lib/prisma-user-message";
+import { WATCHLIST_TYPES, type WatchlistType } from "@/data/watchlist";
 
 export async function registerAndSignIn(formData: FormData): Promise<
   | { ok: true }
@@ -167,7 +168,7 @@ const watchlistItemSchema = z.object({
     .max(12)
     .regex(/^[A-Za-z0-9.-]+$/, "Ticker can only contain letters, numbers, dots, or dashes."),
   sector: z.string().trim().min(1, "Enter a sector or theme.").max(120),
-  type: z.enum(["Stock", "ETF"]),
+  type: z.enum(WATCHLIST_TYPES),
   thesis: z.string().trim().max(2000).optional(),
   notes: z.string().trim().max(2000).optional(),
 });
@@ -265,7 +266,7 @@ export async function addWatchlistItem(payload: {
   companyName: string;
   ticker: string;
   sector: string;
-  type: "Stock" | "ETF";
+  type: WatchlistType;
   thesis?: string;
   notes?: string;
 }): Promise<{ ok: true } | { ok: false; error: string }> {

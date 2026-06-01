@@ -16,8 +16,10 @@ import {
 } from "@/app/actions/hub";
 import {
   flattenWatchlistEntries,
+  WATCHLIST_TYPES,
   watchlistTickers,
   type WatchlistSectorGroup,
+  type WatchlistType,
 } from "@/data/watchlist";
 import type { StockQuote } from "@/lib/alpha-vantage";
 import { Alert } from "@/components/ui/alert";
@@ -36,7 +38,7 @@ const emptyForm: {
   companyName: string;
   ticker: string;
   sector: string;
-  type: "Stock" | "ETF";
+  type: WatchlistType;
   thesis: string;
   notes: string;
 } = {
@@ -328,7 +330,7 @@ export function WatchlistTab(props: {
 
       <Card>
         <CardContent>
-          <CardTitle className="mb-6">Add a stock or ETF</CardTitle>
+          <CardTitle className="mb-6">Add to watchlist</CardTitle>
           <form onSubmit={handleAddStock} className="flex flex-col gap-5">
             <FieldGroup>
               <Label label="Ticker" htmlFor="wl-ticker">
@@ -351,12 +353,15 @@ export function WatchlistTab(props: {
                   onChange={(e) =>
                     setForm((f) => ({
                       ...f,
-                      type: e.target.value as "Stock" | "ETF",
+                      type: e.target.value as WatchlistType,
                     }))
                   }
                 >
-                  <option value="Stock">Stock</option>
-                  <option value="ETF">ETF</option>
+                  {WATCHLIST_TYPES.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
                 </Select>
               </Label>
               <Label label="Company name" htmlFor="wl-company" className="sm:col-span-2">
@@ -411,7 +416,7 @@ export function WatchlistTab(props: {
         <EmptyState
           icon={TrendingUp}
           title="No tickers yet"
-          description="Add your first stock or ETF above to start tracking prices and building your group watchlist."
+          description="Add your first stock, ETF, mutual fund, or bond above to start tracking prices and building your group watchlist."
         />
       ) : (
         <div className="flex flex-col gap-10">

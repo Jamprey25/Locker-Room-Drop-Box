@@ -1,9 +1,24 @@
+export const WATCHLIST_TYPES = [
+  "Stock",
+  "ETF",
+  "Mutual Fund",
+  "Bond",
+] as const;
+
+export type WatchlistType = (typeof WATCHLIST_TYPES)[number];
+
+export function parseWatchlistType(value: string): WatchlistType {
+  return (WATCHLIST_TYPES as readonly string[]).includes(value)
+    ? (value as WatchlistType)
+    : "Stock";
+}
+
 export type WatchlistEntry = {
   id?: string;
   companyName: string;
   ticker: string;
   sector: string;
-  type: "Stock" | "ETF";
+  type: WatchlistType;
   thesis: string;
   status: string;
   priority: string;
