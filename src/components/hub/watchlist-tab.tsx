@@ -416,7 +416,7 @@ export function WatchlistTab(props: {
         <EmptyState
           icon={TrendingUp}
           title="No tickers yet"
-          description="Add your first stock, ETF, mutual fund, or bond above to start tracking prices and building your group watchlist."
+          description="Add your first security above to start tracking prices and building your group watchlist."
         />
       ) : (
         <div className="flex flex-col gap-10">

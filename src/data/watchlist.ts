@@ -3,6 +3,7 @@ export const WATCHLIST_TYPES = [
   "ETF",
   "Mutual Fund",
   "Bond",
+  "Other",
 ] as const;
 
 export type WatchlistType = (typeof WATCHLIST_TYPES)[number];
