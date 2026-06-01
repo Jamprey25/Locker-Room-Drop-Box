@@ -1,5 +1,18 @@
-import type { WatchlistEntry } from "@/data/watchlist";
+import type { WatchlistEntry, WatchlistType } from "@/data/watchlist";
 import type { StockQuote } from "@/lib/alpha-vantage";
+
+/** Ticker badge / symbol colors by instrument type */
+export const WATCHLIST_TYPE_TICKER_CLASS: Record<WatchlistType, string> = {
+  Stock: "border-red-500/45 bg-red-500/15 text-red-200",
+  ETF: "border-sky-500/45 bg-sky-500/15 text-sky-200",
+  "Mutual Fund": "border-orange-500/45 bg-orange-500/15 text-orange-200",
+  Bond: "border-emerald-500/45 bg-emerald-500/15 text-emerald-200",
+  Other: "border-amber-400/45 bg-amber-400/15 text-amber-200",
+};
+
+export function watchlistTypeTickerClass(type: WatchlistType) {
+  return WATCHLIST_TYPE_TICKER_CLASS[type];
+}
 
 export type WatchlistRow = WatchlistEntry & {
   quote?: StockQuote;

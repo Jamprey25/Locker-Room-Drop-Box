@@ -1,3 +1,5 @@
+import type { WatchlistType } from "@/data/watchlist";
+import { watchlistTypeTickerClass } from "@/components/hub/watchlist-utils";
 import { cn } from "@/lib/cn";
 
 const variants = {
@@ -36,14 +38,19 @@ export function Badge({
 export function TickerBadge({
   children,
   className,
+  type,
 }: {
   children: React.ReactNode;
   className?: string;
+  type?: WatchlistType;
 }) {
   return (
     <span
       className={cn(
-        "rounded-lg border border-sky-500/30 bg-sky-500/10 px-2.5 py-1 font-mono text-sm font-bold tracking-wide text-sky-200",
+        "rounded-lg border px-2.5 py-1 font-mono text-sm font-bold tracking-wide",
+        type
+          ? watchlistTypeTickerClass(type)
+          : "border-sky-500/30 bg-sky-500/10 text-sky-200",
         className
       )}
     >

@@ -21,10 +21,11 @@ import {
   formatUsd,
   sectorCounts,
   sortRows,
+  watchlistTypeTickerClass,
   type SortKey,
   type WatchlistRow,
 } from "@/components/hub/watchlist-utils";
-import { flattenWatchlistEntries } from "@/data/watchlist";
+import { flattenWatchlistEntries, WATCHLIST_TYPES } from "@/data/watchlist";
 
 function StatPill({
   label,
@@ -90,7 +91,12 @@ function PerformanceChart({ rows }: { rows: WatchlistRow[] }) {
               key={row.ticker}
               className="grid grid-cols-[52px_1fr_56px] items-center gap-2"
             >
-              <span className="font-mono text-xs font-bold text-sky-200">
+              <span
+                className={cn(
+                  "rounded px-1 font-mono text-xs font-bold",
+                  watchlistTypeTickerClass(row.type)
+                )}
+              >
                 {row.ticker}
               </span>
               <div className="relative h-7 overflow-hidden rounded-lg bg-white/[0.03]">
@@ -135,12 +141,13 @@ function HeatmapGrid({ rows }: { rows: WatchlistRow[] }) {
           <div
             key={row.ticker}
             title={`${row.companyName} · ${row.changePct >= 0 ? "+" : ""}${row.changePct.toFixed(2)}%`}
-            className="flex flex-col items-center justify-center rounded-xl border border-white/[0.06] px-1 py-2.5 transition hover:border-white/15"
+            className={cn(
+              "flex flex-col items-center justify-center rounded-xl border-2 px-1 py-2.5 transition hover:brightness-110",
+              watchlistTypeTickerClass(row.type)
+            )}
             style={{ backgroundColor: changeBg(row.changePct, intensity) }}
           >
-            <span className="font-mono text-[11px] font-bold text-white">
-              {row.ticker}
-            </span>
+            <span className="font-mono text-[11px] font-bold">{row.ticker}</span>
             <span
               className={cn(
                 "mt-0.5 text-[10px] font-medium tabular-nums",
@@ -291,7 +298,25 @@ export function WatchlistOverview({
 
       <Card className="overflow-hidden p-0">
         <CardContent className="p-5 sm:p-6">
-          <CardTitle className="mb-4">At-a-glance heatmap</CardTitle>
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <CardTitle>At-a-glance heatmap</CardTitle>
+            <div className="flex flex-wrap gap-2">
+              {WATCHLIST_TYPES.map((t) => (
+                <span
+                  key={t}
+                  className={cn(
+                    "rounded-md border px-2 py-0.5 font-mono text-[10px] font-bold",
+                    watchlistTypeTickerClass(t)
+                  )}
+                >
+                  {t}
+                </span>
+              ))}
+            </div>
+          </div>
+          <p className="mb-3 text-xs text-slate-500">
+            Border color = instrument type · fill tint = daily % change
+          </p>
           <HeatmapGrid rows={rows} />
         </CardContent>
       </Card>
@@ -388,7 +413,7 @@ export function WatchlistOverview({
                     <Fragment key={rowKey}>
                       <tr className="border-b border-white/[0.04] transition hover:bg-white/[0.03]">
                         <td className="px-4 py-3">
-                          <TickerBadge className="text-[11px]">
+                          <TickerBadge type={row.type} className="text-[11px]">
                             {row.ticker}
                           </TickerBadge>
                         </td>
