@@ -9,7 +9,7 @@ import {
   useState,
   useTransition,
 } from "react";
-import { LineChart, TrendingUp } from "lucide-react";
+import { ChevronDown, Plus, TrendingUp } from "lucide-react";
 import {
   addWatchlistItem,
   deleteWatchlistItem,
@@ -22,15 +22,15 @@ import {
   type WatchlistType,
 } from "@/data/watchlist";
 import type { StockQuote } from "@/lib/alpha-vantage";
+import { WatchlistOverview } from "@/components/hub/watchlist-overview";
 import { Alert } from "@/components/ui/alert";
-import { Badge, TickerBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/page-header";
 import { FieldGroup, Input, Label, Select, Textarea } from "@/components/ui/input";
-import { Stagger, StaggerItem } from "@/components/ui/motion";
 import { useToast } from "@/components/ui/toast";
 import { formatRelativeTime } from "@/lib/format";
+import { cn } from "@/lib/cn";
 
 const REQUEST_GAP_MS = 1_200;
 
@@ -49,21 +49,6 @@ const emptyForm: {
   thesis: "",
   notes: "",
 };
-
-function formatUsd(value: number) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value);
-}
-
-function changeTone(change: number) {
-  if (change > 0) return "text-emerald-400";
-  if (change < 0) return "text-red-400";
-  return "text-slate-400";
-}
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -90,6 +75,7 @@ export function WatchlistTab(props: {
   const [loadingPrices, setLoadingPrices] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
+  const [showAddForm, setShowAddForm] = useState(false);
   const [pending, start] = useTransition();
   const fetchRunRef = useRef(0);
 
@@ -214,6 +200,7 @@ export function WatchlistTab(props: {
       }
 
       setForm(emptyForm);
+      setShowAddForm(false);
       toast(`${form.ticker.toUpperCase()} added to the watchlist.`, "success");
       router.refresh();
     });
@@ -275,33 +262,51 @@ export function WatchlistTab(props: {
   }
 
   return (
-    <section className="flex flex-col gap-8">
+    <section className="flex flex-col gap-6">
       <Card>
         <CardContent>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="space-y-2">
               <CardTitle>Group watchlist</CardTitle>
               <p className="max-w-2xl text-sm leading-relaxed text-slate-400">
-                {totalEntries} names across {props.groups.length} sectors — sorted
-                alphabetically within each theme. Add or remove tickers below.
+                {totalEntries} holdings · {props.groups.length} sectors · dashboard
+                view below
               </p>
             </div>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => start(() => void loadQuotes(true))}
-              disabled={pending || loadingPrices || !apiConfigured || tickers.length === 0}
-              className="shrink-0"
-            >
-              {pending || loadingPrices ? "Updating…" : "Refresh prices"}
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setShowAddForm((s) => !s)}
+                className="gap-1.5"
+              >
+                <Plus className="h-4 w-4" />
+                Add holding
+                <ChevronDown
+                  className={cn(
+                    "h-4 w-4 transition",
+                    showAddForm && "rotate-180"
+                  )}
+                />
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => start(() => void loadQuotes(true))}
+                disabled={
+                  pending || loadingPrices || !apiConfigured || tickers.length === 0
+                }
+              >
+                {pending || loadingPrices ? "Updating…" : "Refresh prices"}
+              </Button>
+            </div>
           </div>
 
           {!apiConfigured ? (
             <Alert variant="warning" className="mt-4">
               Add{" "}
               <code className="font-mono text-amber-50">ALPHA_VANTAGE_API_KEY</code>{" "}
-              to your environment to enable live quotes.
+              to your environment to enable live quotes and charts.
             </Alert>
           ) : null}
 
@@ -328,182 +333,121 @@ export function WatchlistTab(props: {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardContent>
-          <CardTitle className="mb-6">Add to watchlist</CardTitle>
-          <form onSubmit={handleAddStock} className="flex flex-col gap-5">
-            <FieldGroup>
-              <Label label="Ticker" htmlFor="wl-ticker">
-                <Input
-                  id="wl-ticker"
-                  required
-                  maxLength={12}
-                  value={form.ticker}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, ticker: e.target.value.toUpperCase() }))
-                  }
-                  placeholder="NVDA"
-                  className="font-mono uppercase"
-                />
-              </Label>
-              <Label label="Type" htmlFor="wl-type">
-                <Select
-                  id="wl-type"
-                  value={form.type}
-                  onChange={(e) =>
-                    setForm((f) => ({
-                      ...f,
-                      type: e.target.value as WatchlistType,
-                    }))
-                  }
+      {showAddForm ? (
+        <Card>
+          <CardContent>
+            <CardTitle className="mb-6">Add to watchlist</CardTitle>
+            <form onSubmit={handleAddStock} className="flex flex-col gap-5">
+              <FieldGroup>
+                <Label label="Ticker" htmlFor="wl-ticker">
+                  <Input
+                    id="wl-ticker"
+                    required
+                    maxLength={12}
+                    value={form.ticker}
+                    onChange={(e) =>
+                      setForm((f) => ({
+                        ...f,
+                        ticker: e.target.value.toUpperCase(),
+                      }))
+                    }
+                    placeholder="NVDA"
+                    className="font-mono uppercase"
+                  />
+                </Label>
+                <Label label="Type" htmlFor="wl-type">
+                  <Select
+                    id="wl-type"
+                    value={form.type}
+                    onChange={(e) =>
+                      setForm((f) => ({
+                        ...f,
+                        type: e.target.value as WatchlistType,
+                      }))
+                    }
+                  >
+                    {WATCHLIST_TYPES.map((t) => (
+                      <option key={t} value={t}>
+                        {t}
+                      </option>
+                    ))}
+                  </Select>
+                </Label>
+                <Label label="Company name" htmlFor="wl-company" className="sm:col-span-2">
+                  <Input
+                    id="wl-company"
+                    required
+                    maxLength={200}
+                    value={form.companyName}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, companyName: e.target.value }))
+                    }
+                    placeholder="NVIDIA"
+                  />
+                </Label>
+                <Label label="Sector / theme" htmlFor="wl-sector" className="sm:col-span-2">
+                  <Input
+                    id="wl-sector"
+                    required
+                    maxLength={120}
+                    value={form.sector}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, sector: e.target.value }))
+                    }
+                    placeholder="AI / Semiconductors"
+                  />
+                </Label>
+                <Label
+                  label="Investment thesis"
+                  htmlFor="wl-thesis"
+                  optional
+                  className="sm:col-span-2"
                 >
-                  {WATCHLIST_TYPES.map((t) => (
-                    <option key={t} value={t}>
-                      {t}
-                    </option>
-                  ))}
-                </Select>
-              </Label>
-              <Label label="Company name" htmlFor="wl-company" className="sm:col-span-2">
-                <Input
-                  id="wl-company"
-                  required
-                  maxLength={200}
-                  value={form.companyName}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, companyName: e.target.value }))
-                  }
-                  placeholder="NVIDIA"
-                />
-              </Label>
-              <Label label="Sector / theme" htmlFor="wl-sector" className="sm:col-span-2">
-                <Input
-                  id="wl-sector"
-                  required
-                  maxLength={120}
-                  value={form.sector}
-                  onChange={(e) => setForm((f) => ({ ...f, sector: e.target.value }))}
-                  placeholder="AI / Semiconductors"
-                />
-              </Label>
-              <Label label="Investment thesis" htmlFor="wl-thesis" optional className="sm:col-span-2">
-                <Textarea
-                  id="wl-thesis"
-                  rows={2}
-                  maxLength={2000}
-                  value={form.thesis}
-                  onChange={(e) => setForm((f) => ({ ...f, thesis: e.target.value }))}
-                />
-              </Label>
-              <Label label="Notes" htmlFor="wl-notes" optional className="sm:col-span-2">
-                <Textarea
-                  id="wl-notes"
-                  rows={2}
-                  maxLength={2000}
-                  value={form.notes}
-                  onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-                />
-              </Label>
-            </FieldGroup>
-            <Button type="submit" disabled={pending} className="w-fit">
-              {pending ? "Saving…" : "Add to watchlist"}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+                  <Textarea
+                    id="wl-thesis"
+                    rows={2}
+                    maxLength={2000}
+                    value={form.thesis}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, thesis: e.target.value }))
+                    }
+                  />
+                </Label>
+                <Label label="Notes" htmlFor="wl-notes" optional className="sm:col-span-2">
+                  <Textarea
+                    id="wl-notes"
+                    rows={2}
+                    maxLength={2000}
+                    value={form.notes}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, notes: e.target.value }))
+                    }
+                  />
+                </Label>
+              </FieldGroup>
+              <Button type="submit" disabled={pending} className="w-fit">
+                {pending ? "Saving…" : "Add to watchlist"}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      ) : null}
 
       {props.groups.length === 0 ? (
         <EmptyState
           icon={TrendingUp}
           title="No tickers yet"
-          description="Add your first security above to start tracking prices and building your group watchlist."
+          description="Add your first security with “Add holding” to populate the dashboard."
         />
       ) : (
-        <div className="flex flex-col gap-10">
-          {props.groups.map((group) => (
-            <div key={group.sector} className="flex flex-col gap-4">
-              <div className="flex flex-wrap items-end justify-between gap-2 border-b border-white/[0.06] pb-3">
-                <h2 className="text-lg font-semibold text-white">{group.sector}</h2>
-                <span className="text-xs font-medium uppercase tracking-wider text-slate-500">
-                  {group.entries.length}{" "}
-                  {group.entries.length === 1 ? "name" : "names"}
-                </span>
-              </div>
-
-              <Stagger className="flex flex-col gap-3">
-                {group.entries.map((entry) => {
-                  const quote = quotes[entry.ticker.toUpperCase()];
-                  return (
-                    <StaggerItem key={entry.id ?? entry.ticker}>
-                      <Card
-                        hover
-                        className="border-white/[0.07] bg-white/[0.02] p-5 sm:p-6"
-                      >
-                        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                          <div className="min-w-0 flex-1 space-y-2">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <TickerBadge>{entry.ticker}</TickerBadge>
-                              <Badge variant="muted">{entry.type}</Badge>
-                            </div>
-                            <h3 className="text-[17px] font-semibold text-white">
-                              {entry.companyName}
-                            </h3>
-                            {entry.thesis ? (
-                              <p className="text-sm leading-relaxed text-slate-400">
-                                {entry.thesis}
-                              </p>
-                            ) : null}
-                            {entry.notes ? (
-                              <p className="text-xs text-slate-500">{entry.notes}</p>
-                            ) : null}
-                          </div>
-
-                          <div className="flex shrink-0 flex-col gap-3 lg:items-end">
-                            <div className="flex flex-col items-start gap-1 rounded-2xl border border-white/[0.06] bg-black/25 px-4 py-3 lg:min-w-[140px] lg:items-end">
-                              {quote ? (
-                                <>
-                                  <span className="text-lg font-semibold tabular-nums text-white">
-                                    {formatUsd(quote.price)}
-                                  </span>
-                                  <span
-                                    className={`text-sm font-medium tabular-nums ${changeTone(quote.change)}`}
-                                  >
-                                    {quote.change >= 0 ? "+" : ""}
-                                    {quote.change.toFixed(2)} ({quote.changePercent})
-                                  </span>
-                                </>
-                              ) : (
-                                <span className="flex items-center gap-1.5 text-sm text-slate-500">
-                                  <LineChart className="h-3.5 w-3.5" aria-hidden />
-                                  {!apiConfigured
-                                    ? "No API key"
-                                    : loadingPrices
-                                      ? "Loading…"
-                                      : "Unavailable"}
-                                </span>
-                              )}
-                            </div>
-                            {entry.id ? (
-                              <Button
-                                type="button"
-                                variant="danger"
-                                size="sm"
-                                onClick={() => handleDelete(entry.id, entry.ticker)}
-                                disabled={pending}
-                              >
-                                Remove
-                              </Button>
-                            ) : null}
-                          </div>
-                        </div>
-                      </Card>
-                    </StaggerItem>
-                  );
-                })}
-              </Stagger>
-            </div>
-          ))}
-        </div>
+        <WatchlistOverview
+          groups={props.groups}
+          quotes={quotes}
+          apiConfigured={apiConfigured}
+          loadingPrices={loadingPrices}
+          pending={pending}
+          onDelete={handleDelete}
+        />
       )}
     </section>
   );
