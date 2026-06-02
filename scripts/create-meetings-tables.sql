@@ -28,3 +28,14 @@ CREATE TABLE IF NOT EXISTS meeting_votes (
 );
 
 CREATE INDEX IF NOT EXISTS meeting_votes_meeting_id_idx ON meeting_votes(meeting_id);
+
+CREATE TABLE IF NOT EXISTS meeting_questions (
+  id TEXT PRIMARY KEY,
+  meeting_id TEXT NOT NULL REFERENCES meetings(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  body TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS meeting_questions_meeting_id_idx ON meeting_questions(meeting_id);
+CREATE INDEX IF NOT EXISTS meeting_questions_user_id_idx ON meeting_questions(user_id);

@@ -16,6 +16,12 @@ const voteInclude = {
       user: { select: memberSelect },
     },
   },
+  questions: {
+    orderBy: { createdAt: "asc" as const },
+    include: {
+      user: { select: memberSelect },
+    },
+  },
 } as const;
 
 /** Seed the default operating-agreement meeting when none exist. */

@@ -2,8 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
-import { CalendarClock, Check, Mail, Users, X } from "lucide-react";
+import { CalendarClock, Check, Mail, MessageSquare, Trash2, Users, X } from "lucide-react";
 import {
+  addMeetingQuestion,
+  deleteMeetingQuestion,
   removeMeetingVote,
   updateMeetingDetails,
   voteOnMeetingTime,
@@ -23,7 +25,7 @@ import { EmptyState } from "@/components/ui/page-header";
 import { FieldGroup, Input, Label, Textarea } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/cn";
-import { formatPerson } from "@/lib/format";
+import { formatDistance, formatPerson } from "@/lib/format";
 
 function toLocalInputValue(date: Date): string {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -108,6 +110,7 @@ export function MeetingsTab({
     notes: meeting?.notes ?? "",
     scheduledAt: meeting ? toLocalInputValue(meeting.scheduledAt) : "",
   }));
+  const [questionDraft, setQuestionDraft] = useState("");
 
   const voteByUserId = useMemo(() => {
     const map = new Map<string, boolean>();
@@ -170,6 +173,36 @@ export function MeetingsTab({
         return;
       }
       toast("Meeting details updated.", "success");
+      router.refresh();
+    });
+  }
+
+  function handleAddQuestion(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!meeting) return;
+    const body = questionDraft.trim();
+    if (!body) return;
+
+    start(async () => {
+      const res = await addMeetingQuestion({ meetingId: meeting.id, body });
+      if (!res.ok) {
+        toast(res.error, "error");
+        return;
+      }
+      setQuestionDraft("");
+      toast("Note added.", "success");
+      router.refresh();
+    });
+  }
+
+  function handleDeleteQuestion(questionId: string) {
+    start(async () => {
+      const res = await deleteMeetingQuestion(questionId);
+      if (!res.ok) {
+        toast(res.error, "error");
+        return;
+      }
+      toast("Note removed.", "success");
       router.refresh();
     });
   }
@@ -285,8 +318,11 @@ export function MeetingsTab({
             </Alert>
           ) : null}
 
-          {meeting.notes?.trim() && isConfirmed ? (
+          {meeting.notes?.trim() ? (
             <p className="mb-6 rounded-xl border border-white/[0.06] bg-black/20 px-4 py-3 text-sm leading-relaxed text-slate-300">
+              <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
+                Agenda
+              </span>
               {meeting.notes}
             </p>
           ) : null}
@@ -323,10 +359,11 @@ export function MeetingsTab({
                     />
                   </Label>
                   <Label
-                    label="Notes"
+                    label="Agenda notes"
                     htmlFor="meeting-notes"
                     optional
                     className="sm:col-span-2"
+                    hint="Shared context for the meeting — Zoom link, prep docs, etc."
                   >
                     <Textarea
                       id="meeting-notes"
@@ -380,6 +417,77 @@ export function MeetingsTab({
                 : ""}
               .
             </p>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="border-white/[0.07] bg-white/[0.02]">
+        <CardContent>
+          <div className="mb-6 flex items-start gap-3">
+            <MessageSquare className="mt-0.5 h-5 w-5 shrink-0 text-sky-400" aria-hidden />
+            <div>
+              <CardTitle>Notes &amp; questions</CardTitle>
+              <p className="mt-2 text-sm text-slate-400">
+                Drop topics you want covered, clarifying questions, or prep notes for
+                the group before the meeting.
+              </p>
+            </div>
+          </div>
+
+          <form onSubmit={handleAddQuestion} className="mb-6 flex flex-col gap-4">
+            <Label label="Your note or question" htmlFor="meeting-question">
+              <Textarea
+                id="meeting-question"
+                rows={3}
+                value={questionDraft}
+                onChange={(e) => setQuestionDraft(e.target.value)}
+                placeholder="What should we cover in the operating agreement discussion?"
+              />
+            </Label>
+            <Button type="submit" disabled={pending || !questionDraft.trim()} className="w-fit">
+              {pending ? "Saving…" : "Add note / question"}
+            </Button>
+          </form>
+
+          {meeting.questions.length === 0 ? (
+            <p className="rounded-xl border border-dashed border-white/[0.08] px-4 py-6 text-center text-sm text-slate-500">
+              No notes yet — be the first to add a question or topic.
+            </p>
+          ) : (
+            <ul className="flex flex-col gap-3">
+              {meeting.questions.map((entry) => (
+                <li
+                  key={entry.id}
+                  className="rounded-xl border border-white/[0.06] bg-black/20 px-4 py-3"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-white">
+                        {formatPerson(entry.user)}
+                      </p>
+                      <p className="mt-0.5 text-xs text-slate-500">
+                        {formatDistance(entry.createdAt)}
+                      </p>
+                    </div>
+                    {entry.userId === currentUserId ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        disabled={pending}
+                        onClick={() => handleDeleteQuestion(entry.id)}
+                        aria-label="Delete your note"
+                      >
+                        <Trash2 className="h-4 w-4" aria-hidden />
+                      </Button>
+                    ) : null}
+                  </div>
+                  <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-slate-300">
+                    {entry.body}
+                  </p>
+                </li>
+              ))}
+            </ul>
           )}
         </CardContent>
       </Card>

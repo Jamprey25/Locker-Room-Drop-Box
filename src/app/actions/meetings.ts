@@ -226,3 +226,78 @@ export async function removeMeetingVote(meetingId: string) {
     return { ok: false as const, error: prismaToUserMessage(error) };
   }
 }
+
+const questionSchema = z.object({
+  meetingId: z.string().trim().min(1),
+  body: z.string().trim().min(1, "Add a note or question.").max(1000),
+});
+
+export async function addMeetingQuestion(
+  payload: z.infer<typeof questionSchema>
+) {
+  const session = await auth();
+  const uid = session?.user?.id;
+  if (!uid) return { ok: false as const, error: "You need to log in." };
+
+  const parsed = questionSchema.safeParse(payload);
+  if (!parsed.success) {
+    return {
+      ok: false as const,
+      error:
+        parsed.error.flatten().fieldErrors.body?.[0] ??
+        "Could not save that note.",
+    };
+  }
+
+  const meeting = await prisma.meeting.findUnique({
+    where: { id: parsed.data.meetingId },
+    select: { id: true },
+  });
+  if (!meeting) {
+    return { ok: false as const, error: "Meeting not found." };
+  }
+
+  try {
+    await prisma.meetingQuestion.create({
+      data: {
+        meetingId: parsed.data.meetingId,
+        userId: uid,
+        body: parsed.data.body,
+      },
+    });
+    revalidateMeetings();
+    return { ok: true as const };
+  } catch (error) {
+    console.error("[addMeetingQuestion]", error);
+    return { ok: false as const, error: prismaToUserMessage(error) };
+  }
+}
+
+export async function deleteMeetingQuestion(questionId: string) {
+  const session = await auth();
+  const uid = session?.user?.id;
+  if (!uid) return { ok: false as const, error: "You need to log in." };
+
+  const id = questionId.trim();
+  if (!id) return { ok: false as const, error: "Note not found." };
+
+  try {
+    const question = await prisma.meetingQuestion.findUnique({
+      where: { id },
+      select: { userId: true },
+    });
+    if (!question) {
+      return { ok: false as const, error: "Note not found." };
+    }
+    if (question.userId !== uid) {
+      return { ok: false as const, error: "You can only delete your own notes." };
+    }
+
+    await prisma.meetingQuestion.delete({ where: { id } });
+    revalidateMeetings();
+    return { ok: true as const };
+  } catch (error) {
+    console.error("[deleteMeetingQuestion]", error);
+    return { ok: false as const, error: prismaToUserMessage(error) };
+  }
+}

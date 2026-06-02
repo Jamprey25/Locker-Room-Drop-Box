@@ -17,6 +17,14 @@ export type MeetingVoteRow = {
   user: MeetingMemberRow;
 };
 
+export type MeetingQuestionRow = {
+  id: string;
+  body: string;
+  createdAt: Date;
+  userId: string;
+  user: MeetingMemberRow;
+};
+
 export type MeetingRow = {
   id: string;
   title: string;
@@ -27,6 +35,7 @@ export type MeetingRow = {
   emailsSentAt: Date | null;
   createdAt: Date;
   votes: MeetingVoteRow[];
+  questions: MeetingQuestionRow[];
 };
 
 export type MeetingsData = {
