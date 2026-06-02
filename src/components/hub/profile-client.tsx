@@ -2,7 +2,11 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { changeDisplayName, changePassword } from "@/app/actions/hub";
+import {
+  changeDisplayName,
+  changeEmail,
+  changePassword,
+} from "@/app/actions/hub";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
@@ -16,7 +20,9 @@ export function ProfileClient(props: {
   const router = useRouter();
   const { toast } = useToast();
   const [name, setName] = useState(props.initialName);
+  const [email, setEmail] = useState(props.email);
   const [namePending, startName] = useTransition();
+  const [emailPending, startEmail] = useTransition();
   const [passwordPending, startPassword] = useTransition();
 
   function handleNameSubmit(form: HTMLFormElement) {
@@ -29,6 +35,24 @@ export function ProfileClient(props: {
       }
       setName(res.name);
       toast("Display name updated.", "success");
+      router.refresh();
+    });
+  }
+
+  function handleEmailSubmit(form: HTMLFormElement) {
+    startEmail(async () => {
+      const fd = new FormData(form);
+      const res = await changeEmail(fd);
+      if (!res.ok) {
+        toast(res.error, "error");
+        return;
+      }
+      setEmail(res.email);
+      const passwordInput = form.querySelector<HTMLInputElement>(
+        '[name="currentPassword"]'
+      );
+      if (passwordInput) passwordInput.value = "";
+      toast("Email updated.", "success");
       router.refresh();
     });
   }
@@ -52,7 +76,7 @@ export function ProfileClient(props: {
       <PageHeader
         eyebrow="Account"
         title="Profile"
-        description="Update how your name appears in the locker and change your password."
+        description="Update your display name, email, and password."
       />
 
       <Card>
@@ -78,17 +102,6 @@ export function ProfileClient(props: {
                   placeholder="Jordan"
                 />
               </Label>
-              <Label label="Email" htmlFor="profile-email" className="sm:col-span-2">
-                <Input
-                  id="profile-email"
-                  value={props.email}
-                  readOnly
-                  disabled
-                />
-                <span className="text-xs font-normal text-slate-500">
-                  Email cannot be changed here.
-                </span>
-              </Label>
             </FieldGroup>
             <Button
               type="submit"
@@ -96,6 +109,51 @@ export function ProfileClient(props: {
               className="w-fit"
             >
               {namePending ? "Saving…" : "Save display name"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent>
+          <CardTitle className="mb-6">Email</CardTitle>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleEmailSubmit(e.currentTarget);
+            }}
+            className="flex flex-col gap-5"
+          >
+            <FieldGroup>
+              <Label label="Email address" htmlFor="profile-email" className="sm:col-span-2">
+                <Input
+                  id="profile-email"
+                  name="email"
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="email"
+                  placeholder="you@example.com"
+                />
+              </Label>
+              <Label label="Current password" htmlFor="email-current-password" className="sm:col-span-2">
+                <Input
+                  id="email-current-password"
+                  name="currentPassword"
+                  type="password"
+                  required
+                  minLength={8}
+                  autoComplete="current-password"
+                />
+              </Label>
+            </FieldGroup>
+            <Button
+              type="submit"
+              disabled={emailPending || email.trim().toLowerCase() === props.email.toLowerCase()}
+              className="w-fit"
+            >
+              {emailPending ? "Saving…" : "Update email"}
             </Button>
           </form>
         </CardContent>

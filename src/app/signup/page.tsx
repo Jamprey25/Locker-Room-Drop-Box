@@ -60,6 +60,7 @@ export default function SignupPage() {
                 type="email"
                 required
                 autoComplete="email"
+                placeholder="you@example.com"
               />
             </Label>
             <Label

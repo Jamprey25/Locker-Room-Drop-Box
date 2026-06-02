@@ -159,6 +159,11 @@ const changeDisplayNameSchema = z.object({
     .max(80, "Use 80 characters or fewer."),
 });
 
+const changeEmailSchema = z.object({
+  email: z.string().email("Enter a valid email address."),
+  currentPassword: z.string().min(8, "Enter your current password."),
+});
+
 const watchlistItemSchema = z.object({
   companyName: z.string().trim().min(1, "Enter a company name.").max(200),
   ticker: z
@@ -226,6 +231,60 @@ export async function changePassword(formData: FormData): Promise<
     return { ok: true };
   } catch (e) {
     console.error("[changePassword]", e);
+    return { ok: false, error: prismaToUserMessage(e) };
+  }
+}
+
+export async function changeEmail(formData: FormData): Promise<
+  { ok: true; email: string } | { ok: false; error: string }
+> {
+  const session = await auth();
+  const uid = session?.user?.id;
+  if (!uid) return { ok: false, error: "You need to log in." };
+
+  const parsed = changeEmailSchema.safeParse({
+    email: String(formData.get("email") ?? ""),
+    currentPassword: String(formData.get("currentPassword") ?? ""),
+  });
+
+  if (!parsed.success) {
+    const first = parsed.error.flatten().fieldErrors;
+    const msg =
+      first.email?.[0] ??
+      first.currentPassword?.[0] ??
+      "Check your email and password and try again.";
+    return { ok: false, error: msg };
+  }
+
+  const email = parsed.data.email.toLowerCase();
+
+  try {
+    const user = await prisma.user.findUnique({ where: { id: uid } });
+    if (!user) return { ok: false, error: "Account not found." };
+
+    if (email === user.email) {
+      return { ok: false, error: "That is already your email address." };
+    }
+
+    const matches = await bcrypt.compare(
+      parsed.data.currentPassword,
+      user.passwordHash
+    );
+    if (!matches) {
+      return { ok: false, error: "Current password is incorrect." };
+    }
+
+    const updated = await prisma.user.update({
+      where: { id: uid },
+      data: { email },
+      select: { email: true },
+    });
+
+    revalidatePath("/hub/profile");
+    revalidatePath("/hub");
+    return { ok: true, email: updated.email };
+  } catch (e) {
+    console.error("[changeEmail]", e);
     return { ok: false, error: prismaToUserMessage(e) };
   }
 }
