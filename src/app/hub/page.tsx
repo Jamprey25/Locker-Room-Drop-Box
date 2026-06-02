@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { isAlphaVantageConfigured } from "@/lib/alpha-vantage";
 import { prisma } from "@/lib/prisma";
 import { prismaToUserMessage } from "@/lib/prisma-user-message";
+import { loadAccountingData } from "@/lib/accounting-db";
 import {
   ensureWatchlistSeeded,
   loadWatchlistGroups,
@@ -18,12 +19,34 @@ export default async function HubPage() {
 
   let watchlistGroups: WatchlistSectorGroup[] = [];
   let watchlistSetupError: string | null = null;
+  let accountingSettings = {
+    cashBalance: 0,
+    otherAssets: 0,
+    totalLiabilities: 0,
+    updatedAt: new Date(),
+  };
+  let accountingExpenses: Awaited<
+    ReturnType<typeof loadAccountingData>
+  >["expenses"] = [];
+  let accountingShares: Awaited<
+    ReturnType<typeof loadAccountingData>
+  >["shares"] = [];
+  let accountingSetupError: string | null = null;
 
   try {
     await ensureWatchlistSeeded(uid);
     watchlistGroups = await loadWatchlistGroups();
   } catch (e) {
     watchlistSetupError = prismaToUserMessage(e);
+  }
+
+  try {
+    const accounting = await loadAccountingData();
+    accountingSettings = accounting.settings;
+    accountingExpenses = accounting.expenses;
+    accountingShares = accounting.shares;
+  } catch (e) {
+    accountingSetupError = prismaToUserMessage(e);
   }
 
   const [videos, resources] = await Promise.all([
@@ -68,6 +91,10 @@ export default async function HubPage() {
       watchlistQuotes={{}}
       watchlistApiConfigured={isAlphaVantageConfigured()}
       watchlistSetupError={watchlistSetupError}
+      accountingSettings={accountingSettings}
+      accountingExpenses={accountingExpenses}
+      accountingShares={accountingShares}
+      accountingSetupError={accountingSetupError}
     />
   );
 }

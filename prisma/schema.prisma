@@ -20,6 +20,8 @@ model User {
   resourcesAdded Resource[]       @relation("ResourceAddedBy")
   videoWatches   VideoWatch[]
   watchlistAdded WatchlistItem[]  @relation("WatchlistAddedBy")
+  expensesAdded  BusinessExpense[] @relation("ExpenseAddedBy")
+  sharesAdded    SharePosition[]   @relation("ShareAddedBy")
 
   @@map("users")
 }
@@ -82,4 +84,49 @@ model WatchlistItem {
   @@index([sector])
   @@index([addedById])
   @@map("watchlist_items")
+}
+
+model BusinessExpense {
+  id          String   @id @default(cuid())
+  year        Int
+  month       Int
+  amount      Decimal  @db.Decimal(12, 2)
+  category    String
+  description String   @default("")
+  createdAt   DateTime @default(now()) @map("created_at")
+  addedById   String   @map("added_by_id")
+  addedBy     User     @relation("ExpenseAddedBy", fields: [addedById], references: [id], onDelete: Cascade)
+
+  @@index([year, month])
+  @@index([addedById])
+  @@map("business_expenses")
+}
+
+model SharePosition {
+  id            String   @id @default(cuid())
+  ticker        String
+  companyName   String   @default("") @map("company_name")
+  shareCount    Decimal  @map("share_count") @db.Decimal(14, 4)
+  costBasis     Decimal  @map("cost_basis") @db.Decimal(14, 2)
+  acquiredYear  Int?     @map("acquired_year")
+  acquiredMonth Int?     @map("acquired_month")
+  notes         String?
+  createdAt     DateTime @default(now()) @map("created_at")
+  addedById     String   @map("added_by_id")
+  addedBy       User     @relation("ShareAddedBy", fields: [addedById], references: [id], onDelete: Cascade)
+
+  @@index([ticker])
+  @@index([addedById])
+  @@map("share_positions")
+}
+
+/// Singleton row (id = "default") for balance-sheet inputs
+model AccountingSettings {
+  id               String   @id @default("default")
+  cashBalance      Decimal  @default(0) @map("cash_balance") @db.Decimal(14, 2)
+  otherAssets      Decimal  @default(0) @map("other_assets") @db.Decimal(14, 2)
+  totalLiabilities Decimal  @default(0) @map("total_liabilities") @db.Decimal(14, 2)
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  @@map("accounting_settings")
 }
