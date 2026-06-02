@@ -47,6 +47,7 @@ export default function RootLayout({
         <AppSessionProvider>
           <ToastProvider>{children}</ToastProvider>
         </AppSessionProvider>
+        <Analytics />
       </body>
     </html>
   );
