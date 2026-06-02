@@ -38,7 +38,7 @@ export function Label({
 }
 
 const fieldCls =
-  "rounded-xl border border-white/[0.08] bg-black/25 px-3.5 py-2.5 text-sm text-white placeholder:text-slate-600 transition focus:border-sky-500/45 focus:bg-black/35 focus:outline-none focus:ring-1 focus:ring-sky-500/30 disabled:cursor-not-allowed disabled:opacity-60";
+  "rounded-xl border border-white/[0.08] bg-input-bg px-3.5 py-2.5 text-sm text-white placeholder:text-slate-600 transition focus:border-sky-500/45 focus:bg-bg-elevated/80 focus:outline-none focus:ring-1 focus:ring-sky-500/30 disabled:cursor-not-allowed disabled:opacity-60";
 
 export function Input({
   className,

@@ -346,7 +346,7 @@ export function WatchlistOverview({
           </div>
           <div className="max-h-[min(520px,60vh)] overflow-auto">
             <table className="w-full min-w-[640px] border-collapse text-sm">
-              <thead className="sticky top-0 z-10 bg-[#0a0a0f]/95 backdrop-blur-md">
+              <thead className="sticky top-0 z-10 bg-bg-base/95 backdrop-blur-md">
                 <tr className="border-b border-white/[0.06]">
                   <th className="px-4 py-3 text-left">
                     <SortHeader

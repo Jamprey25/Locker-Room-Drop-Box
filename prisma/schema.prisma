@@ -22,6 +22,8 @@ model User {
   watchlistAdded WatchlistItem[]  @relation("WatchlistAddedBy")
   expensesAdded  BusinessExpense[] @relation("ExpenseAddedBy")
   sharesAdded    SharePosition[]   @relation("ShareAddedBy")
+  meetingsCreated Meeting[]        @relation("MeetingCreatedBy")
+  meetingVotes    MeetingVote[]
 
   @@map("users")
 }
@@ -129,4 +131,38 @@ model AccountingSettings {
   updatedAt        DateTime @updatedAt @map("updated_at")
 
   @@map("accounting_settings")
+}
+
+model Meeting {
+  id           String        @id @default(cuid())
+  title        String
+  notes        String?
+  scheduledAt  DateTime      @map("scheduled_at")
+  status       String        @default("proposed")
+  confirmedAt  DateTime?     @map("confirmed_at")
+  emailsSentAt DateTime?     @map("emails_sent_at")
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+  createdById  String        @map("created_by_id")
+  createdBy    User          @relation("MeetingCreatedBy", fields: [createdById], references: [id], onDelete: Cascade)
+  votes        MeetingVote[]
+
+  @@index([status])
+  @@index([scheduledAt])
+  @@index([createdById])
+  @@map("meetings")
+}
+
+model MeetingVote {
+  id        String   @id @default(cuid())
+  meetingId String   @map("meeting_id")
+  userId    String   @map("user_id")
+  agreed    Boolean  @default(true)
+  votedAt   DateTime @default(now()) @map("voted_at")
+  meeting   Meeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([meetingId, userId])
+  @@index([meetingId])
+  @@map("meeting_votes")
 }

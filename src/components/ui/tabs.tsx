@@ -17,7 +17,7 @@ export function Tabs<T extends string>({
   return (
     <div
       className={cn(
-        "relative flex shrink-0 flex-wrap rounded-full border border-white/[0.08] bg-black/25 p-1 backdrop-blur-md",
+        "relative flex shrink-0 flex-wrap rounded-full border border-white/[0.08] bg-white/[0.04] p-1 backdrop-blur-md",
         className
       )}
       role="tablist"

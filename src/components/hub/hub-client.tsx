@@ -10,6 +10,7 @@ import {
 import type { WatchlistSectorGroup } from "@/data/watchlist";
 import type { StockQuote } from "@/lib/alpha-vantage";
 import { AccountingTab } from "@/components/hub/accounting-tab";
+import { MeetingsTab } from "@/components/hub/meetings-tab";
 import { ResourcesTab } from "@/components/hub/resources-tab";
 import { VideosTab } from "@/components/hub/videos-tab";
 import { WatchlistTab } from "@/components/hub/watchlist-tab";
@@ -18,6 +19,7 @@ import type {
   AccountingSettingsRow,
   SharePositionRow,
 } from "@/lib/accounting";
+import type { MeetingsData } from "@/lib/meetings";
 import { PageHeader } from "@/components/ui/page-header";
 import { TabPanel, Tabs } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/toast";
@@ -48,6 +50,7 @@ export type HubResourceRow = {
 const HUB_TABS = [
   { id: "videos" as const, label: "Videos" },
   { id: "resources" as const, label: "Resources" },
+  { id: "meetings" as const, label: "Meetings" },
   { id: "watchlist" as const, label: "Watchlist" },
   { id: "accounting" as const, label: "Accounting" },
 ];
@@ -64,6 +67,9 @@ export function HubClient(props: {
   accountingExpenses: AccountingExpenseRow[];
   accountingShares: SharePositionRow[];
   accountingSetupError?: string | null;
+  meetingsData: MeetingsData;
+  meetingsSetupError?: string | null;
+  currentUserId: string;
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -172,6 +178,14 @@ export function HubClient(props: {
               shares={props.accountingShares}
               apiConfigured={props.watchlistApiConfigured}
               setupError={props.accountingSetupError}
+            />
+          </TabPanel>
+        ) : tab === "meetings" ? (
+          <TabPanel key="meetings">
+            <MeetingsTab
+              data={props.meetingsData}
+              currentUserId={props.currentUserId}
+              setupError={props.meetingsSetupError}
             />
           </TabPanel>
         ) : tab === "watchlist" ? (

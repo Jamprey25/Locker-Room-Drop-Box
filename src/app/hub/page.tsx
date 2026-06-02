@@ -6,6 +6,11 @@ import { prisma } from "@/lib/prisma";
 import { prismaToUserMessage } from "@/lib/prisma-user-message";
 import { loadAccountingData } from "@/lib/accounting-db";
 import {
+  ensureMeetingSeeded,
+  loadMeetingsData,
+} from "@/lib/meetings-db";
+import type { MeetingsData } from "@/lib/meetings";
+import {
   ensureWatchlistSeeded,
   loadWatchlistGroups,
 } from "@/lib/watchlist-db";
@@ -32,6 +37,15 @@ export default async function HubPage() {
     ReturnType<typeof loadAccountingData>
   >["shares"] = [];
   let accountingSetupError: string | null = null;
+  let meetingsData: MeetingsData = {
+    meeting: null,
+    members: [],
+    registeredCount: 0,
+    expectedGroupSize: 10,
+    quorumRequired: 8,
+    emailConfigured: false,
+  };
+  let meetingsSetupError: string | null = null;
 
   try {
     await ensureWatchlistSeeded(uid);
@@ -47,6 +61,13 @@ export default async function HubPage() {
     accountingShares = accounting.shares;
   } catch (e) {
     accountingSetupError = prismaToUserMessage(e);
+  }
+
+  try {
+    await ensureMeetingSeeded(uid);
+    meetingsData = await loadMeetingsData();
+  } catch (e) {
+    meetingsSetupError = prismaToUserMessage(e);
   }
 
   const [videos, resources] = await Promise.all([
@@ -95,6 +116,9 @@ export default async function HubPage() {
       accountingExpenses={accountingExpenses}
       accountingShares={accountingShares}
       accountingSetupError={accountingSetupError}
+      meetingsData={meetingsData}
+      meetingsSetupError={meetingsSetupError}
+      currentUserId={uid}
     />
   );
 }
