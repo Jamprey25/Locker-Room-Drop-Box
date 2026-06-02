@@ -9,9 +9,15 @@ import {
 } from "@/app/actions/hub";
 import type { WatchlistSectorGroup } from "@/data/watchlist";
 import type { StockQuote } from "@/lib/alpha-vantage";
+import { AccountingTab } from "@/components/hub/accounting-tab";
 import { ResourcesTab } from "@/components/hub/resources-tab";
 import { VideosTab } from "@/components/hub/videos-tab";
 import { WatchlistTab } from "@/components/hub/watchlist-tab";
+import type {
+  AccountingExpenseRow,
+  AccountingSettingsRow,
+  SharePositionRow,
+} from "@/lib/accounting";
 import { PageHeader } from "@/components/ui/page-header";
 import { TabPanel, Tabs } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/toast";
@@ -43,6 +49,7 @@ const HUB_TABS = [
   { id: "videos" as const, label: "Videos" },
   { id: "resources" as const, label: "Resources" },
   { id: "watchlist" as const, label: "Watchlist" },
+  { id: "accounting" as const, label: "Accounting" },
 ];
 
 export function HubClient(props: {
@@ -53,6 +60,10 @@ export function HubClient(props: {
   watchlistQuotes: Record<string, StockQuote>;
   watchlistApiConfigured: boolean;
   watchlistSetupError?: string | null;
+  accountingSettings: AccountingSettingsRow;
+  accountingExpenses: AccountingExpenseRow[];
+  accountingShares: SharePositionRow[];
+  accountingSetupError?: string | null;
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -153,7 +164,17 @@ export function HubClient(props: {
       />
 
       <AnimatePresence mode="wait">
-        {tab === "watchlist" ? (
+        {tab === "accounting" ? (
+          <TabPanel key="accounting">
+            <AccountingTab
+              settings={props.accountingSettings}
+              expenses={props.accountingExpenses}
+              shares={props.accountingShares}
+              apiConfigured={props.watchlistApiConfigured}
+              setupError={props.accountingSetupError}
+            />
+          </TabPanel>
+        ) : tab === "watchlist" ? (
           <TabPanel key="watchlist">
             <WatchlistTab
               groups={props.watchlistGroups}
