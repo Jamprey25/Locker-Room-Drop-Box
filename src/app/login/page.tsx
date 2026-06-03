@@ -67,7 +67,7 @@ function LoginInner() {
               type="email"
               required
               autoComplete="email"
-              placeholder="you@school.edu"
+              placeholder="you@example.com"
             />
           </Label>
           <Label label="Password" htmlFor="login-password">
